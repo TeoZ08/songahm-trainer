@@ -18,12 +18,12 @@ try {
     try {
       const pathname = new URL(route.request().url()).pathname;
       const file = path.join(process.cwd(), 'dist', pathname === '/' ? 'index.html' : pathname);
-      await route.fulfill({ body: await readFile(file), contentType: { '.html': 'text/html', '.js': 'application/javascript', '.css': 'text/css', '.svg':'image/svg+xml' }[path.extname(file)] || 'application/octet-stream' });
+      await route.fulfill({ body: await readFile(file), contentType: { '.html': 'text/html', '.js': 'application/javascript', '.css': 'text/css', '.svg':'image/svg+xml','.png':'image/png' }[path.extname(file)] || 'application/octet-stream' });
     } catch { await route.fulfill({ status: 404, body: 'Not found' }); }
   });
   await page.goto(process.env.TEST_URL || 'http://songahm.local/');
   await page.getByRole('heading', { name: 'Defesa alta', exact: true }).waitFor();
-  assert.equal(await page.getByRole('region',{name:'Movimento atual'}).getAttribute('aria-live'),'polite');
+  assert.equal(await page.getByRole('region',{name:'Movimento atual',includeHidden:true}).getAttribute('aria-live'),'polite');
   const surface = page.locator('.stage > canvas,.stage > svg');
   await surface.waitFor(); await page.waitForTimeout(200);
   assert.equal(await page.getByRole('alert').count(), 0);
@@ -32,7 +32,7 @@ try {
   if(process.env.RENDERER==='svg')assert.equal(renderer,'svg','Compatibility renderer must be exercised');
   if (chrome) assert.equal(renderer, 'webgl', 'Chrome must exercise WebGL');
   if (renderer === 'svg') assert.ok(await page.locator('.stage svg path').count() > 40);
-  const folder = `artifacts/rev03-${renderer}`;
+  const folder = `artifacts/rev05-${renderer}`;
   await mkdir(folder, { recursive: true });
   const shot = name => page.screenshot({ path: `${folder}/${name}.png` });
   const current = () => page.locator('.step-list [aria-current="step"] span').innerText();
@@ -44,7 +44,19 @@ try {
     assert.ok(Math.abs(Number(await input.inputValue()) / 3.2 - fraction) < .04);
     await page.waitForTimeout(60);
   };
+  assert.ok(await page.locator('.master-logo').evaluate(img=>img.complete&&img.naturalWidth>0),'Authentic local logo loads');
+  assert.equal(await page.locator('html').evaluate(el=>getComputedStyle(el).getPropertyValue('--master-red').trim()),'#e03841');
+  const contrast=await page.locator('.preparation').evaluate(el=>{
+    const luminance=color=>color.match(/[\d.]+/g).slice(0,3).map(Number).map(v=>v/255).map(v=>v<=.04045?v/12.92:((v+.055)/1.055)**2.4).reduce((sum,v,i)=>sum+v*[.2126,.7152,.0722][i],0);
+    const ratio=(a,b)=>(Math.max(a,b)+.05)/(Math.min(a,b)+.05);
+    const caption=getComputedStyle(el.querySelector('.prep-kicker')),panel=getComputedStyle(el);
+    const selected=getComputedStyle(document.querySelector('.step-list [aria-current=step]'));
+    return {caption:ratio(luminance(caption.color),luminance(panel.backgroundColor)),selection:ratio(luminance(selected.color),luminance(selected.backgroundColor))};
+  });
+  assert.ok(contrast.caption>=4.5&&contrast.selection>=4.5,'Brand captions and selected movement have AA contrast');
   await shot('desktop');
+  await page.setViewportSize({width:1920,height:1080});await page.waitForTimeout(100);await shot('desktop-1920');
+  await page.setViewportSize({width:1280,height:900});await page.waitForTimeout(100);
   const stageRect = await surface.boundingBox();
   assert.ok(stageRect.width >= 1279 && stageRect.height >= 899, 'Viewport fills window');
   await page.clock.install();
@@ -129,7 +141,7 @@ try {
     const viewport = await surface.boundingBox(); assert.ok(viewport.width >= width - 1 && viewport.height >= height - 1);
     for (const button of await page.locator('.topbar button,.transport button,.camera-bar button').all()) {
       if (!await button.isVisible()) continue;
-      const r = await button.boundingBox(); assert.ok(r.x >= 0 && r.y >= 0 && r.x + r.width <= width + 1 && r.y + r.height <= height + 1, `${width}: control stays inside viewport`);
+      const r = await button.boundingBox(); if(width<=640)assert.ok(r.width>=43.5&&r.height>=43.5,`${width}: touch target at least 44px`);assert.ok(r.x >= 0 && r.y >= 0 && r.x + r.width <= width + 1 && r.y + r.height <= height + 1, `${width}: control stays inside viewport`);
     }
     await shot(`viewport-${width}`);
     await page.getByRole('button',{name:'Aprender',exact:true}).click();
@@ -140,7 +152,7 @@ try {
     const rig=JSON.parse(await page.locator('.stage').getAttribute('data-body-bounds')),prep=await page.locator('.preparation').boundingBox(),controls=await page.locator('.timeline').boundingBox();
     if(width<=640)assert.ok(rig.top>=(await page.locator('.topbar').boundingBox()).height+4,'Rig below mobile header');
     if(width<=640)assert.ok(rig.bottom<=controls.y+4,`${width}: rig above preparation ${rig.bottom}/${controls.y}`);
-    else assert.ok(rig.left>=prep.x+prep.width-4,'Landscape rig outside preparation column');
+    else {assert.ok(rig.left>=prep.x+prep.width-4,'Landscape rig outside preparation column');const header=await page.locator('.topbar').boundingBox();assert.ok(prep.y>=header.y+header.height+8,'Landscape preparation below header');}
     await shot(`preparation-${width}`);
     await page.locator('.preparation summary').click();await shot(`preparation-folded-${width}`);
     await page.getByRole('button',{name:'Revisar',exact:true}).click();
