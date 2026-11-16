@@ -2,11 +2,12 @@ export type Mode = 'Aprender' | 'Praticar' | 'Revisar';
 export interface Player { index:number; time:number; playing:boolean; mode:Mode; speed:number; finished:boolean; }
 export const duration = 3.2;
 export const initial:Player = {index:0,time:0,playing:false,mode:'Aprender',speed:0.5,finished:false};
-export type Action = {type:'tick';delta:number} | {type:'toggle'|'restart'|'repeat'} | {type:'seek';index:number} | {type:'mode';mode:Mode} | {type:'speed';speed:number};
+export type Action = {type:'tick';delta:number} | {type:'toggle'|'restart'|'repeat'} | {type:'seek';index:number} | {type:'mode';mode:Mode} | {type:'speed';speed:number} | {type:'scrub';time:number};
 export function update(s:Player,a:Action,count=18):Player {
   switch(a.type){
     case 'restart': return {...s,index:0,time:0,playing:false,finished:false};
     case 'seek': return {...s,index:Math.max(0,Math.min(count-1,a.index)),time:0,playing:false,finished:false};
+    case 'scrub': {if(!Number.isFinite(a.time))return s;const time=Math.max(0,Math.min(duration,a.time));return {...s,time,playing:false,finished:s.index===count-1&&time===duration};}
     case 'repeat': return {...s,time:0,playing:true,finished:false};
     case 'mode': return {...s,mode:a.mode};
     case 'speed': return [0.25,0.5,0.75,1].includes(a.speed)?{...s,speed:a.speed}:s;

@@ -1,11 +1,12 @@
-# Validação local
+# QA — revisão 02 · 16/11/2026
 
-- `npm run build`: TypeScript e bundle de produção aprovados. Aviso de tamanho: bundle principal ~777 kB / 211 kB gzip, incluindo Three.js e renderizador de compatibilidade.
-- `npm run lint`: aprovado.
-- `npm test`: 12 testes; timeline, modos, velocidades, limites, continuidade, IK e apoios.
-- `npm run test:browser`: Firefox real, bundle de produção via interceptação HTTP do Playwright; 1440×1000 e 390×844. Os 18 movimentos, reprodução/pausa, repetição, navegação, modos, velocidades, câmera livre/presets, teclado e fontes foram exercitados. Capturas locais em `artifacts/`.
-- Capturas revisadas: palco, defesa alta, chutes e layout móvel. Corrigidos enquadramento, iluminação, ordenação do tatame, posição da defesa alta e acesso móvel aos controles.
-- Renderização efetivamente testada: cena Three.js via SVGRenderer, com órbita e projeção 3D. WebGL/recuperação de contexto não foram comprovados neste ambiente; Chrome é impedido por restrições de sockets, e Firefox não expõe WebGL.
-- `npm run dev` bloqueado pelo ambiente: `listen EPERM` na porta 5173. Nenhuma publicação.
-- `.git` original é somente leitura. Commits locais em `.git-local`; integração ao histórico original pendente de escrita autorizada pelo ambiente.
-- Não comprova precisão marcial nem funcionamento em iPhone físico. Lacunas de técnica descritas na interface e no README.
+- Instalação limpa: `npm ci --no-audit --no-fund` aprovada. O lockfile local incompleto foi corrigido e voltou a coincidir com o histórico principal; nenhuma dependência declarada foi adicionada.
+- `npm run build` e `npm run build -- --base=/songahm-trainer/`: aprovados, incluindo TypeScript. Bundle principal ~784 kB / 214 kB gzip; permanece o aviso de tamanho do Vite.
+- `npm run lint` e `npm test`: aprovados; 15 testes cobrem modos/timeline, inspeção de fases, continuidade, alcance/IK, apoio, pivôs, participação do tronco e distinção entre extensão da mão aberta e flexão da defesa interna.
+- Navegador real: Chrome WebGL com SwiftShader e Firefox com WebGL desativado para exercitar SVG. Suíte de 18 movimentos, fases dos dois lados, reprodução em andamento, modo/velocidade durante reprodução, pausa/retomada, prática/revisão, presets/órbita/zoom, teclado, HUD/timeline recolhíveis, instruções e modal de fontes.
+- Viewports 1280×900, 390×844, 320×700 e 844×390; sem overflow da página, controles dentro da janela e painel sem cobrir o transporte. Toque/pinça emulados por eventos de dois contatos no Chrome, sem zoom do documento. Perda de contexto WebGL seguida de recarregamento também exercitada.
+- Capturas reais revistas em `artifacts/rev02-webgl/` e `artifacts/rev02-svg/`, incluindo aproximação, câmara, extensão, recolhimento e aterrissagens 4/8/13/17. Ajustados enquadramento óptico, juntas, contraste, orientação dos pés e sobreposições. A baseline foi preservada em `artifacts/rev01/`.
+- Preview de produção: `npm exec vite -- preview --host 127.0.0.1 --port 4173 --base=/songahm-trainer/`. Teste com `BROWSER=chromium TEST_URL=http://127.0.0.1:4173/songahm-trainer/ npm run test:browser`; fallback com `RENDERER=svg`.
+- Workflow original preservada e acrescida de lint/testes antes do build. Histórico principal mantém os commits anteriores; `.git-local` não é necessário para executar ou desenvolver.
+- Validação pública reproduzível: `BROWSER=chromium TEST_URL=https://teoz08.github.io/songahm-trainer/ npm run test:browser`. Conferir também HTTP e caminhos JS/CSS da base publicada.
+- Limites: simulação procedural não certificada, alturas/tempos/pivôs aproximados, retorno Bah Ro não animado. Vídeo público inspecionado por quadros para estudo privado; sem reutilizar vídeo/imagens no produto ou Git. A fotografia mencionada não estava acessível. Não houve teste em iPhone físico nem avaliação de instrutor.

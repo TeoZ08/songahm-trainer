@@ -1,52 +1,152 @@
-import {chromium,firefox} from 'playwright';
-import {readFile,mkdir} from 'node:fs/promises';
+import { chromium, firefox } from 'playwright';
+import { readFile, mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import assert from 'node:assert/strict';
-const watchdog=setTimeout(()=>{console.error('Browser test timed out');process.exit(1)},90000);
-const useChrome=process.env.BROWSER==='chromium';
-const browser=useChrome?await chromium.launch({headless:true,executablePath:process.env.CHROME_PATH||'/usr/bin/google-chrome',args:['--use-angle=swiftshader','--enable-unsafe-swiftshader','--disable-dev-shm-usage']}):await firefox.launch({headless:true});
-let failed=false;
-try{
- const page=await browser.newPage({viewport:{width:1440,height:1000},deviceScaleFactor:1});
- const errors=[];page.on('pageerror',e=>errors.push(e.message));
- await page.route('http://songahm.local/**',async route=>{try{const pathname=new URL(route.request().url()).pathname;const file=path.join(process.cwd(),'dist',pathname==='/'?'index.html':pathname);const data=await readFile(file);const ext=path.extname(file);await route.fulfill({body:data,contentType:{'.html':'text/html','.js':'application/javascript','.css':'text/css','.svg':'image/svg+xml'}[ext]||'application/octet-stream'});}catch{await route.fulfill({status:404,body:'Not found'});}});
- await page.goto('http://songahm.local/');await page.getByRole('heading',{name:'Um movimento de cada vez.'}).waitFor();
- console.log('App loaded');await page.waitForTimeout(700);
- if(await page.getByRole('alert').count())throw Error(await page.getByRole('alert').innerText());
- await page.locator('.stage > canvas,.stage > svg').waitFor();
- const renderer=await page.locator('.stage').getAttribute('data-renderer');console.log('Renderer:',renderer);
- if(renderer==='svg')assert.ok(await page.locator('.stage svg path').count()>40,'Articulated geometry must be visible');
- assert.equal(await page.getByRole('alert').count(),0,'WebGL must render');
- await mkdir('artifacts',{recursive:true});
- await page.screenshot({path:'artifacts/desktop.png',fullPage:true});
- await page.clock.install();
- await page.getByRole('button',{name:'Reproduzir',exact:false}).click();await page.clock.runFor(4800);
- await page.getByRole('button',{name:'Pausar',exact:false}).click();const paused=Number(await page.locator('progress').getAttribute('value'));assert.ok(paused>0);await page.clock.runFor(500);assert.equal(Number(await page.locator('progress').getAttribute('value')),paused);
- await page.screenshot({path:'artifacts/high-block.png',fullPage:true});
- for(const speed of ['0.25','0.5','0.75','1']){await page.getByRole('combobox').selectOption(speed);assert.equal(await page.getByRole('combobox').inputValue(),speed);}
- await page.getByRole('button',{name:'Movimento 3:',exact:false}).click();
- await page.getByRole('button',{name:'Repetir técnica'}).click();await page.clock.runFor(750);const beforeSpeed=await page.locator('progress').getAttribute('value');await page.getByRole('combobox').selectOption('0.75');const afterSpeed=Number(await page.locator('progress').getAttribute('value'));assert.ok(afterSpeed>=Number(beforeSpeed)&&afterSpeed-Number(beforeSpeed)<.3,'Changing speed preserves progress while playback advances');assert.match(await page.locator('.play').innerText(),/Pausar/);await page.getByRole('combobox').selectOption('1');await page.clock.runFor(1000);
- await page.screenshot({path:'artifacts/front-kick.png',fullPage:true});
- await page.getByRole('button',{name:'Praticar',exact:false}).click();await page.clock.runFor(2000);assert.match(await page.locator('.stage-top').innerText(),/Movimento concluído/);assert.equal(await page.locator('[aria-current="step"] span').innerText(),'03');
- await page.getByRole('button',{name:'Continuar',exact:false}).click();assert.equal(await page.locator('[aria-current="step"] span').innerText(),'04');
- await page.getByRole('button',{name:'Movimento 7:',exact:false}).click();await page.getByRole('button',{name:'Repetir técnica'}).click();await page.clock.runFor(2100);await page.getByRole('button',{name:'Pausar',exact:false}).click();
- const renderSurface=page.locator('.stage > canvas,.stage > svg');
- let previousCamera=await renderSurface.screenshot();
- for(const name of ['Frente','Lateral','Costas','Topo','Restaurar câmera']){await page.getByRole('button',{name,exact:true}).click();const nextCamera=await renderSurface.screenshot();assert.ok(!previousCamera.equals(nextCamera),`${name} changes the rendered camera`);previousCamera=nextCamera;}
- await page.screenshot({path:'artifacts/side-kick.png',fullPage:true});
- const canvas=page.locator('.stage > canvas,.stage > svg');const box=await canvas.boundingBox();await page.mouse.move(box.x+box.width/2,box.y+box.height/2);await page.mouse.down();await page.mouse.move(box.x+box.width/2+90,box.y+box.height/2+30,{steps:5});await page.mouse.up();await page.clock.runFor(150);const orbitImage=await canvas.screenshot();assert.ok(!previousCamera.equals(orbitImage),'Orbit drag changes projection');await page.mouse.wheel(0,-200);await page.clock.runFor(150);assert.ok(!orbitImage.equals(await canvas.screenshot()),'Wheel zoom changes projection');
- await page.getByRole('button',{name:'Revisar',exact:false}).click();await page.getByRole('button',{name:'Movimento 18:',exact:false}).click();await page.getByRole('button',{name:'Repetir técnica'}).click();await page.clock.runFor(3400);assert.match(await page.locator('.stage-top').innerText(),/Aula concluída/);
- await page.getByRole('button',{name:'Reiniciar aula',exact:true}).click();assert.equal(await page.locator('[aria-current="step"] span').innerText(),'01');
- await page.locator('h1').click();await page.keyboard.press('ArrowRight');assert.equal(await page.locator('[aria-current="step"] span').innerText(),'02');await page.keyboard.press('ArrowLeft');assert.equal(await page.locator('[aria-current="step"] span').innerText(),'01');await page.keyboard.press('Space');await page.clock.runFor(500);assert.match(await page.locator('.play').innerText(),/Pausar/);await page.keyboard.press('Space');
- await page.getByRole('button',{name:'Reiniciar aula',exact:true}).click();await page.getByRole('button',{name:'Aprender',exact:false}).click();
- for(let index=1;index<=18;index++){await page.getByRole('button',{name:`Movimento ${index}:`,exact:false}).click();await page.getByRole('button',{name:'Repetir técnica'}).click();await page.clock.runFor(3300);assert.equal(await page.locator('[aria-current=step] span').innerText(),String(index).padStart(2,'0'));if([6,9,15,17,18].includes(index))await page.locator('.stage-wrap').screenshot({path:`artifacts/pose-${index}.png`});}
- await page.getByRole('button',{name:'Reiniciar aula',exact:true}).click();
- await page.setViewportSize({width:390,height:844});await page.clock.runFor(100);await page.screenshot({path:'artifacts/mobile.png',fullPage:true});
- assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'No horizontal overflow');
- for(const b of await page.locator('.transport button,.step-list button,.modes button').all()){const r=await b.boundingBox();assert.ok(r.height>=44,'Touch target at least 44 px tall');}
- await page.getByRole('button',{name:'Fontes e limites',exact:false}).click();assert.equal(await page.locator('.sources a').count(),2);await page.screenshot({path:'artifacts/mobile-sources.png',fullPage:true});
- await page.setViewportSize({width:320,height:700});await page.clock.runFor(100);assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'320 px layout fits');for(const button of await page.locator('.camera-bar button').all()){const r=await button.boundingBox();assert.ok(r.x>=0&&r.x+r.width<=320,'Camera controls remain inside small viewport');}
- assert.deepEqual(errors,[]);
- if(renderer==='webgl'){await page.evaluate(()=>{const gl=document.querySelector('canvas').getContext('webgl2');gl.getExtension('WEBGL_lose_context')?.loseContext();});await page.clock.runFor(100);await page.getByRole('alert').waitFor();}
- console.log('Browser: desktop/mobile, playback, pause, practice gate, review end, navigation, repeat, speeds, camera, keyboard, sources passed. WebGL loss is checked only with the WebGL renderer. Screenshots: artifacts/.');
-}catch(e){failed=true;console.error(e);}finally{clearTimeout(watchdog);setTimeout(()=>process.exit(failed?1:0),1500);await browser.close();process.exit(failed?1:0);}
+const watchdog = setTimeout(async () => { console.error('Browser test timed out'); setTimeout(()=>process.exit(1),2000);await browser.close();process.exit(1); }, 240000);
+const chrome = process.env.BROWSER === 'chromium';
+const browser = chrome
+  ? await chromium.launch({ headless: true, executablePath: process.env.CHROME_PATH || '/usr/bin/google-chrome', args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--disable-dev-shm-usage'] })
+  : await firefox.launch({ headless: true,firefoxUserPrefs:process.env.RENDERER==='svg'?{'webgl.disabled':true}:{} });
+let failed = false;
+try {
+  const page = await browser.newPage({ viewport: { width: 1280, height: 900 }, deviceScaleFactor: 1 });
+  const errors = [], failedRequests = [], consoleErrors = [];
+  page.on('console',message=>{if(message.type()==='error')consoleErrors.push(message.text());});
+  page.on('pageerror', e => errors.push(e.message));
+  page.on('requestfailed', r => failedRequests.push(r.url()));
+  if (!process.env.TEST_URL) await page.route('http://songahm.local/**', async route => {
+    try {
+      const pathname = new URL(route.request().url()).pathname;
+      const file = path.join(process.cwd(), 'dist', pathname === '/' ? 'index.html' : pathname);
+      await route.fulfill({ body: await readFile(file), contentType: { '.html': 'text/html', '.js': 'application/javascript', '.css': 'text/css', '.svg':'image/svg+xml' }[path.extname(file)] || 'application/octet-stream' });
+    } catch { await route.fulfill({ status: 404, body: 'Not found' }); }
+  });
+  await page.goto(process.env.TEST_URL || 'http://songahm.local/');
+  await page.getByRole('heading', { name: 'Defesa alta', exact: true }).waitFor();
+  assert.equal(await page.getByRole('region',{name:'Movimento atual'}).getAttribute('aria-live'),'polite');
+  const surface = page.locator('.stage > canvas,.stage > svg');
+  await surface.waitFor(); await page.waitForTimeout(200);
+  assert.equal(await page.getByRole('alert').count(), 0);
+  const renderer = await page.locator('.stage').getAttribute('data-renderer');
+  assert.ok(['webgl', 'svg'].includes(renderer));
+  if(process.env.RENDERER==='svg')assert.equal(renderer,'svg','Compatibility renderer must be exercised');
+  if (chrome) assert.equal(renderer, 'webgl', 'Chrome must exercise WebGL');
+  if (renderer === 'svg') assert.ok(await page.locator('.stage svg path').count() > 40);
+  const folder = `artifacts/rev02-${renderer}`;
+  await mkdir(folder, { recursive: true });
+  const shot = name => page.screenshot({ path: `${folder}/${name}.png` });
+  const current = () => page.locator('[aria-current="step"] span').innerText();
+  const seek = index => page.getByRole('button', { name: `Movimento ${index}:`, exact: false }).click();
+  const scrub = async fraction => {
+    const input = page.getByRole('slider', { name: 'Instante da técnica' });
+    const rect = await input.boundingBox();
+    await input.click({ position: { x: 8 + (rect.width - 16) * fraction, y: rect.height / 2 } });
+    assert.ok(Math.abs(Number(await input.inputValue()) / 3.2 - fraction) < .04);
+    await page.waitForTimeout(60);
+  };
+  await shot('desktop');
+  const stageRect = await surface.boundingBox();
+  assert.ok(stageRect.width >= 1279 && stageRect.height >= 899, 'Viewport fills window');
+  await page.clock.install();
+  for (const speed of ['0.25', '0.5', '0.75', '1']) await page.getByRole('combobox', { name: 'Velocidade' }).selectOption(speed);
+  await page.getByRole('button', { name: 'Reproduzir', exact: false }).click();
+  await page.clock.runFor(800);
+  await page.getByRole('button', { name: 'Pausar', exact: false }).click();
+  const paused = await page.getByRole('slider').inputValue();
+  await page.clock.runFor(300); assert.equal(await page.getByRole('slider').inputValue(), paused);
+  await page.getByRole('button', { name: 'Instruções', exact: true }).click();
+  await page.getByRole('complementary', { name: 'Instruções do movimento' }).waitFor();
+  await page.getByRole('button', { name: 'Fechar instruções' }).click();
+
+  // Replay an actual kick, including a mode/speed change during motion.
+  await seek(3); await page.getByRole('button', { name: 'Repetir técnica' }).click();
+  await page.clock.runFor(700); await shot('front-moving-chamber');
+  const beforeSpeed = Number(await page.getByRole('slider').inputValue());
+  await page.getByRole('combobox', { name: 'Velocidade' }).selectOption('.75'.replace(/^\./, '0.'));
+  assert.ok(Number(await page.getByRole('slider').inputValue()) >= beforeSpeed);
+  await page.getByRole('combobox', { name: 'Velocidade' }).selectOption('1');
+  await page.getByRole('button', { name: 'Praticar', exact: true }).click();
+  await page.clock.runFor(2800);
+  assert.equal(await current(), '03'); assert.match(await page.locator('.phase').innerText(), /Movimento concluído/);
+  await page.getByRole('button', { name: 'Continuar', exact: false }).click(); assert.equal(await current(), '04');
+
+  // Every movement renders through the learner's phase control, including both kick sides.
+  for (let index = 1; index <= 18; index++) {
+    await seek(index); await scrub(.75); assert.equal(await current(), String(index).padStart(2, '0'));
+    if ([3, 7, 12, 16].includes(index)) for (const phase of ([7,16].includes(index)?[.05,.34,.655,.83,1]:[.05,.25,.56,.80,1])) {
+      await scrub(phase); await shot(`movement-${index}-phase-${phase}`);
+    }
+    if ([1, 6, 8, 10, 15, 17].includes(index)) { await scrub(1); await shot(`arm-${index}`); }
+  }
+  for(const landing of [4,8,13,17]){await seek(landing);await scrub(.75);await shot(`landing-${landing}`);}
+  await seek(7); await scrub(.65);
+  let image = await surface.screenshot();
+  for (const name of ['Frente', 'Lateral', 'Costas', 'Topo', 'Restaurar câmera']) {
+    await page.getByRole('button', { name, exact: true }).click();
+    const next = await surface.screenshot(); assert.ok(!image.equals(next), `${name} changes projection`); image = next;
+  }
+  await page.getByRole('button', { name: 'Frente', exact: true }).click();
+  await surface.focus(); image = await surface.screenshot(); const beforeArrow = await current();
+  await page.keyboard.press('ArrowRight'); await page.clock.runFor(100);
+  assert.ok(!image.equals(await surface.screenshot())); assert.equal(await current(), beforeArrow);
+  assert.equal(await page.getByRole('button', { name: 'Livre', exact: true }).getAttribute('aria-pressed'), 'true');
+  image = await surface.screenshot(); await page.keyboard.press('='); await page.clock.runFor(100);
+  assert.ok(!image.equals(await surface.screenshot())); await page.keyboard.press('Home'); await page.keyboard.press('Tab');
+  assert.equal(await surface.evaluate(el => el === document.activeElement), false);
+  await page.getByRole('button', { name: 'Recolher timeline', exact: false }).click();
+  assert.equal(await page.getByRole('slider').count(), 0);
+  await page.getByRole('button', { name: 'Expandir timeline', exact: false }).click();
+  await page.getByRole('button', { name: 'Ocultar controles' }).click();
+  assert.equal(await page.locator('.timeline').count(), 0); await shot('clean-viewport');
+  await page.keyboard.press('Escape'); await page.locator('.timeline').waitFor();
+  await seek(17); await page.getByRole('button', { name: 'Revisar', exact: true }).click();
+  await page.getByRole('button', { name: 'Repetir técnica' }).click(); await page.clock.runFor(3300); assert.equal(await current(), '18');
+  await page.clock.runFor(3300); assert.match(await page.locator('.phase').innerText(), /Aula concluída/);
+  await page.getByRole('button', { name: 'Reiniciar aula', exact: true }).click(); assert.equal(await current(), '01');
+  await surface.focus(); await page.keyboard.press('Tab');
+  // Global navigation outside the stage and native controls.
+  await page.evaluate(() => document.activeElement?.blur());
+  await page.keyboard.press('ArrowRight'); assert.equal(await current(), '02'); await page.keyboard.press('ArrowLeft'); assert.equal(await current(), '01');
+
+  for (const [width, height] of [[390, 844], [320, 700], [844, 390]]) {
+    await page.setViewportSize({ width, height }); await page.clock.runFor(100);
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth && document.documentElement.scrollHeight <= innerHeight), `${width}: no document overflow`);
+    const viewport = await surface.boundingBox(); assert.ok(viewport.width >= width - 1 && viewport.height >= height - 1);
+    for (const button of await page.locator('.topbar button,.transport button,.camera-bar button').all()) {
+      if (!await button.isVisible()) continue;
+      const r = await button.boundingBox(); assert.ok(r.x >= 0 && r.y >= 0 && r.x + r.width <= width + 1 && r.y + r.height <= height + 1, `${width}: control stays inside viewport`);
+    }
+    await shot(`viewport-${width}`);
+  }
+  await page.setViewportSize({ width: 390, height: 844 });
+  if(await page.getByRole('button',{name:'Expandir timeline',exact:false}).count())await page.getByRole('button',{name:'Expandir timeline',exact:false}).click();
+  for(const [index,phase] of [[3,.56],[7,.655]]){await seek(index);await scrub(phase);if(!await page.locator('#camera-presets').count())await page.locator('.camera-toggle').click();await page.getByRole('button',{name:'Livre',exact:true}).click();await page.locator('.camera-toggle').click();await shot(`mobile-kick-${index}`);}
+  await page.getByRole('button', { name: 'Instruções', exact: true }).click();const panel=await page.locator('.info-panel').boundingBox(),bar=await page.locator('.timeline').boundingBox();assert.ok(panel.y+panel.height<=bar.y+1,'Instructions do not cover transport controls');await shot('mobile-instructions');
+  await page.getByRole('button', { name: 'Fechar instruções' }).click();
+  await page.locator('.source-link').click(); await page.getByRole('dialog').waitFor();
+  assert.ok(await page.locator('.sources a[href*="atamartialarts"]').count() === 1);
+  await shot('mobile-sources'); await page.keyboard.press('Escape'); assert.equal(await page.getByRole('dialog').isVisible(), false);
+  if(chrome && process.env.TEST_URL){
+    const touchPage=await browser.newPage({viewport:{width:390,height:844},deviceScaleFactor:1,isMobile:true,hasTouch:true});
+    await touchPage.goto(process.env.TEST_URL);await touchPage.locator('.stage > canvas').waitFor();
+    await touchPage.locator('.camera-toggle').tap();await touchPage.getByRole('button',{name:'Lateral',exact:true}).tap();await touchPage.locator('.camera-toggle').tap();
+    const touchSurface=touchPage.locator('.stage > canvas');const beforeTouch=await touchSurface.screenshot();
+    const cdp=await touchPage.context().newCDPSession(touchPage);
+    await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:155,y:350,id:1},{x:220,y:350,id:2}]});
+    await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:125,y:350,id:1},{x:250,y:350,id:2}]});
+    await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+    await touchPage.waitForTimeout(150);assert.ok(!beforeTouch.equals(await touchSurface.screenshot()),'Touch pinch changes the camera');
+    assert.equal(await touchPage.evaluate(()=>visualViewport.scale),1,'Pinch operates the scene, not document zoom');
+    await touchPage.locator('.camera-toggle').tap();assert.equal(await touchPage.getByRole('button',{name:'Livre',exact:true}).getAttribute('aria-pressed'),'true');await touchPage.locator('.camera-toggle').tap();
+    await touchPage.getByRole('button',{name:'Instruções',exact:true}).tap();await touchPage.getByRole('button',{name:'Fechar instruções'}).tap();
+    await touchPage.screenshot({path:`${folder}/touch-pinch.png`});await touchPage.close();
+  }
+  assert.deepEqual(errors, []); assert.deepEqual(failedRequests, []);
+  if(renderer==='webgl')assert.deepEqual(consoleErrors,[],'No WebGL application console errors');
+  if (renderer === 'webgl' && !process.env.SKIP_CONTEXT_LOSS) {
+    await page.evaluate(() => document.querySelector('canvas').getContext('webgl2').getExtension('WEBGL_lose_context')?.loseContext());
+    await page.getByRole('alert').waitFor(); await page.reload(); await page.locator('.stage > canvas').waitFor(); assert.equal(await page.getByRole('alert').count(), 0);
+  }
+  console.log(`PASS ${renderer}: 18 movements, phases on both sides, live playback, practice/review, all controls, camera keys, overlays/dialog, desktop/mobile/landscape; ${folder}`);
+} catch (e) { failed = true; console.error(e); }
+finally { clearTimeout(watchdog); setTimeout(() => process.exit(failed ? 1 : 0), 1500); await browser.close(); process.exit(failed ? 1 : 0); }

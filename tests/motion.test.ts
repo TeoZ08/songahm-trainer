@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { sample, targets, ready, solveIK, add, rotate, type V3 } from '../src/motion.ts';
+import { sample, targets, ready, solveIK, add, rotate, upperPoint, type V3 } from '../src/motion.ts';
 import {lesson,type Side} from '../src/lesson.ts';
 const distance=(a:V3,b:V3)=>Math.hypot(...a.map((v,i)=>v-b[i]));
 test('18 movimentos com ordem, lado e rastreabilidade',()=>{assert.equal(lesson.movements.length,18);assert.deepEqual(lesson.movements.filter(m=>m.technique.includes('Kick')).map(m=>[m.id,m.side]),[[3,'R'],[7,'R'],[12,'L'],[16,'L']]);for(const m of lesson.movements){assert.ok(m.source.includes('ATA'));assert.ok(m.validation.includes('aproximada'));}assert.equal(lesson.movements[8].height,'Alta');assert.equal(lesson.movements[17].height,'Alta');});
@@ -11,3 +11,6 @@ test('poses sem NaN, pés no tatame e comprimentos de perna alcançáveis',()=>{
 
 test('sem salto de posição ou tornozelo no início de cada técnica',()=>{for(let i=0;i<18;i++){const a=sample(i,0),b=sample(i,.0001);assert.ok(distance(a.root,b.root)<.002);for(const s of ['L','R'] as Side[]){assert.ok(distance(a.feet[s].position,b.feet[s].position)<.002);assert.ok(Math.abs(a.feet[s].pitch-b.feet[s].pitch)<.002);}}});
 test('chute lateral mantém um pé apoiado durante a aproximação',()=>{for(const i of [6,15])for(let f=0;f<=100;f++){const p=sample(i,f/100);assert.ok(Math.min(p.feet.L.position[1],p.feet.R.position[1])<.091);}});
+
+test('chutes mobilizam quadril e tronco e pivotam o apoio sem deslizar',()=>{for(const i of [2,6,11,15]){const t=i===6||i===15?.65:.57,p=sample(i,t),base=targets[i],active=lesson.movements[i].side,other=active==='L'?'R':'L';assert.ok(Math.abs(p.yaw-base.yaw)>.04);assert.ok(Math.hypot(...p.lean)>.1);assert.ok(Math.abs(p.feet[other].yaw-base.feet[other].yaw)>.09);assert.ok(distance(p.feet[other].position,base.feet[other].position)<1e-9);assert.ok(distance(upperPoint(p,[0,.5,0]),add(p.root,rotate([0,.5,0],p.yaw+p.twist)))>.05);assert.deepEqual(sample(i,1).lean,[0,0,0]);}});
+test('mão aberta estende o cotovelo; defesa interna preserva flexão',()=>{for(const i of [7,16,5,14]){const p=sample(i,1),side=lesson.movements[i].side,sign=side==='L'?-1:1,shoulder=upperPoint(p,[sign*.27,.5,0]),hand=upperPoint(p,p.hands[side]),r=solveIK(shoulder,hand,rotate([sign*.7,-.4,-.6],p.yaw+p.twist),.31,.30),a=r.joint.map((v,j)=>v-shoulder[j]),b=r.end.map((v,j)=>v-r.joint[j]),dot=a.reduce((n,v,j)=>n+v*b[j],0)/(.31*.30);if(i===7||i===16)assert.ok(dot>.9);else assert.ok(dot<.8);}});

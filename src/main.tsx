@@ -4,32 +4,160 @@ import { lesson, sideName, sources } from './lesson.ts';
 import { duration, initial, update, type Action, type Mode } from './player.ts';
 import { createStage, type CameraView } from './stage.ts';
 import './style.css';
-function App(){
- const [player,dispatch]=useReducer((s:typeof initial,a:Action)=>update(s,a),initial),[view,setView]=useState<CameraView>('Livre'),[compatible,setCompatible]=useState(false),[error,setError]=useState(''),[showSources,setShowSources]=useState(false);
- const host=useRef<HTMLDivElement>(null),live=useRef(player),stage=useRef<ReturnType<typeof createStage>|null>(null);live.current=player;
- const m=lesson.movements[player.index];
- useEffect(()=>{let frame=0,last=0;const tick=(now:number)=>{if(last)dispatch({type:'tick',delta:Math.min((now-last)/1000,.1)});last=now;frame=requestAnimationFrame(tick);};frame=requestAnimationFrame(tick);return()=>cancelAnimationFrame(frame);},[]);
- useEffect(()=>{if(!host.current)return;try{stage.current=createStage(host.current,()=>live.current,setError);setCompatible(stage.current.compatible);}catch{setError('Não foi possível iniciar o 3D neste navegador. Ative WebGL ou tente outro navegador. As instruções e controles continuam disponíveis.');}return()=>stage.current?.dispose();},[]);
- useEffect(()=>{const handler=(e:KeyboardEvent)=>{if(e.target instanceof HTMLElement&&['INPUT','SELECT','TEXTAREA','BUTTON','A'].includes(e.target.tagName))return;if(e.code==='Space'){e.preventDefault();dispatch({type:'toggle'});}if(e.code==='ArrowRight'){e.preventDefault();dispatch({type:'seek',index:live.current.index+1});}if(e.code==='ArrowLeft'){e.preventDefault();dispatch({type:'seek',index:live.current.index-1});}};window.addEventListener('keydown',handler);return()=>window.removeEventListener('keydown',handler);},[]);
- function camera(v:CameraView){setView(v);stage.current?.preset(v);}
- const status=player.finished?'Aula concluída':player.playing?'Demonstrando':player.time>=duration?'Movimento concluído':player.time>0?'Pausado':'Pronto para começar';
- const modes:Record<Mode,string>={Aprender:'Observe com calma. Cada movimento termina em pausa; avance quando estiver pronto.',Praticar:'Faça junto no seu ritmo. A demonstração espera por você entre os movimentos.',Revisar:'Revise os 18 movimentos em sequência contínua. Pause quando precisar.'};
- return <>
- <header className="topbar"><a className="brand" href="#main"><span className="brand-mark">松</span><span>Songahm <b>Trainer</b></span></a><span className="header-note">SUA SALA DE TREINO</span><button className="text-button" onClick={()=>setShowSources(!showSources)} aria-expanded={showSources}>Fontes e limites ↗</button></header>
- <main id="main">
- <div className="intro"><div><p className="eyebrow">TAEKWONDO · FAIXA BRANCA</p><h1>Um movimento de cada vez.</h1><p className="subtitle">Observe, repita e encontre o seu ritmo.</p></div><div className="lesson-label"><span>01</span><div><strong>Songahm 1</strong><small>18 movimentos · aula guiada</small></div></div></div>
- <nav className="modes" aria-label="Modo de treino">{(['Aprender','Praticar','Revisar'] as Mode[]).map((mode,i)=><button key={mode} aria-pressed={player.mode===mode} onClick={()=>dispatch({type:'mode',mode})}><span>0{i+1}</span>{mode}</button>)}<p>{modes[player.mode]}</p></nav>
- <section className="classroom" aria-label="Aula Songahm 1">
- <div className="stage-wrap"><div className="stage-top"><span><i className={player.playing?'live-dot playing':'live-dot'}/>{status}</span><span>{compatible?'3D COMPATÍVEL · SEM SOMBRAS':'INSTRUTOR 3D'}</span></div><div className="stage" ref={host}/>{error&&<div className="stage-error" role="alert">{error}</div>}
- <span className="drag-hint">Arraste para orbitar · pinça para zoom</span>
- <div className="camera-bar" aria-label="Câmera">{(['Livre','Frente','Lateral','Costas','Topo'] as CameraView[]).map(v=><button key={v} aria-pressed={view===v} onClick={()=>camera(v)}>{v}</button>)}<button onClick={()=>camera('Livre')} aria-label="Restaurar câmera">↺</button></div></div>
- <aside className="instruction"><div className="step-header"><span className="eyebrow">MOVIMENTO</span><span><b>{String(m.id).padStart(2,'0')}</b> / 18</span></div><div aria-live="polite" aria-atomic="true"><h2>{m.title}</h2><p className="side"><span className="side-dot"/>Lado {sideName(m.side).toLowerCase()} · altura {m.height.toLowerCase()}</p><dl><div><dt>Base</dt><dd>{m.stance}</dd></div><div><dt>Direção da técnica</dt><dd>{m.direction}</dd></div><div><dt>Passo e giro</dt><dd>{m.turn}</dd></div></dl><div className="attention"><p className="eyebrow">OBSERVE</p><p>{m.note}</p></div></div>
- <div className="validation"><span>SEQUÊNCIA CONFERIDA</span><p>Fonte: {m.source} · movimento {m.id}.<br/>Execução 3D ilustrativa, sem validação marcial.</p><button className="text-button" onClick={()=>setShowSources(v=>!v)} aria-expanded={showSources}>Consultar referência ↗</button></div></aside>
- </section>
- <section className="transport" aria-label="Controles de reprodução"><div className="transport-main"><button title="Reiniciar aula" aria-label="Reiniciar aula" onClick={()=>dispatch({type:'restart'})}>↺</button><button disabled={player.index===0} aria-label="Movimento anterior" onClick={()=>dispatch({type:'seek',index:player.index-1})}>‹</button><button className="play" onClick={()=>dispatch({type:'toggle'})}>{player.playing?'Ⅱ Pausar':player.time>=duration&&!player.finished?'▶ Continuar':player.finished?'▶ Rever aula':'▶ Reproduzir'}</button><button disabled={player.index===17} aria-label="Próximo movimento" onClick={()=>dispatch({type:'seek',index:player.index+1})}>›</button><button className="repeat" onClick={()=>dispatch({type:'repeat'})}>Repetir técnica</button></div><label className="speed">Velocidade<select value={player.speed} onChange={e=>dispatch({type:'speed',speed:Number(e.target.value)})}>{[.25,.5,.75,1].map(s=><option key={s} value={s}>{String(s).replace('.',',')}×{s===.5?' · lenta':''}</option>)}</select></label><div className="progress-block"><span>{status}</span><progress max={duration} value={player.time} aria-label="Progresso do movimento"/></div></section>
- <section className="sequence"><div className="sequence-heading"><h3>O caminho da forma</h3><p>Selecione um movimento para estudar</p></div><div className="step-list">{lesson.movements.map((step,i)=><button key={step.id} aria-label={`Movimento ${step.id}: ${step.title}, ${sideName(step.side)}`} aria-current={player.index===i?'step':undefined} onClick={()=>dispatch({type:'seek',index:i})}><span>{String(step.id).padStart(2,'0')}</span><small>{step.side==='L'?'E':'D'}</small></button>)}</div><div className="sequence-legend"><span>E / D = lado do corpo, independentemente da câmera.</span><span>Teclado: espaço reproduz/pausa · ← → navegam</span></div></section>
- {showSources&&<section className="sources" id="sources"><h3>Referências e limites de precisão</h3><p>Ordem, membros, bases e direções conferidos em 16/11/2026 nos documentos abaixo. Cada número da aula corresponde ao mesmo número nas fontes.</p>{sources.map(s=><p key={s.id}><a href={s.url} target="_blank" rel="noreferrer">{s.title} ↗</a><br/><small>{s.detail}</small></p>)}<p><strong>O que ainda precisa de revisão:</strong> preparação dos braços, rotação dos punhos, ângulos das bases, pivôs, passada #3, distribuição do peso, alturas e tempos. O trajeto e as proporções são esquemáticos. O 3D não é uma referência técnica certificada.</p><p>Posição inicial e retorno Bah Ro não são contagens adicionais. O retorno final ainda não é animado. Use a aula como apoio de memória e confirme a execução com seu instrutor. Produto independente, sem afiliação ou endosso da ATA.</p></section>}
- <footer><span>Treine com espaço e controle. Respeite seus limites.</span><span>Songahm Trainer · estudo independente</span></footer>
- </main></>;
+
+function App() {
+  const [player, dispatch] = useReducer((s: typeof initial, a: Action) => update(s, a), initial);
+  const [view, setView] = useState<CameraView>('Livre');
+  const [compatible, setCompatible] = useState(false);
+  const [error, setError] = useState('');
+  const [info, setInfo] = useState(false);
+  const [hud, setHud] = useState(true);
+  const [timeline, setTimeline] = useState(true);
+  const [cameraTools,setCameraTools]=useState(()=>!matchMedia('(max-width: 640px), (max-height: 600px)').matches);
+  const [showSources, setShowSources] = useState(false);
+  const host = useRef<HTMLDivElement>(null);
+  const live = useRef(player);
+  const stage = useRef<ReturnType<typeof createStage> | null>(null);
+  const dialog = useRef<HTMLDialogElement>(null);
+  const showHud = useRef<HTMLButtonElement>(null);
+  const list = useRef<HTMLDivElement>(null);
+  live.current = player;
+  const m = lesson.movements[player.index];
+  const status = player.finished ? 'Aula concluída' : player.playing ? 'Demonstrando' : player.time >= duration ? 'Movimento concluído' : player.time > 0 ? 'Pausado' : 'Pronto para começar';
+  const progress = player.time / duration;
+  const phase = m.technique === 'sideKick'
+    ? progress < .18 ? 'Aproximação' : progress < .44 ? 'Câmara e pivô' : progress < .66 ? 'Extensão lateral' : progress < .88 ? 'Recolhimento' : 'Preparar apoio'
+    : m.technique === 'frontKick'
+      ? progress < .14 ? 'Transferência de peso' : progress < .32 ? 'Elevar o joelho' : progress < .58 ? 'Extensão frontal' : progress < .82 ? 'Recolhimento' : 'Preparar apoio'
+      : progress < .28 ? 'Preparação' : progress < .72 ? 'Execução' : 'Base final';
+  const modes: Record<Mode, string> = {
+    Aprender: 'Demonstração lenta, um movimento por vez. Continue quando estiver pronto.',
+    Praticar: 'Faça junto. A demonstração espera por você entre os movimentos.',
+    Revisar: 'Execução contínua dos 18 movimentos. Pause quando precisar.',
+  };
+
+  useEffect(() => {
+    let frame = 0, last = 0;
+    const tick = (now: number) => {
+      if (last) dispatch({ type: 'tick', delta: Math.min((now - last) / 1000, .1) });
+      last = now; frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, []);
+  useEffect(() => {
+    if (!host.current) return;
+    try {
+      stage.current = createStage(host.current, () => live.current, setError, () => setView('Livre'));
+      setCompatible(stage.current.compatible);
+    } catch {
+      setError('Não foi possível iniciar o 3D. Tente outro navegador; as instruções continuam disponíveis.');
+    }
+    return () => stage.current?.dispose();
+  }, []);
+  useEffect(()=>{
+    const root=host.current?.parentElement;if(!root)return;
+    const adapt=()=>{
+      const bounds=root.getBoundingClientRect();
+      const header=root.querySelector('.topbar')?.getBoundingClientRect();
+      const movement=root.querySelector('.movement-hud')?.getBoundingClientRect();
+      const controls=root.querySelector('.timeline')?.getBoundingClientRect();
+      const top=hud?Math.max(header?.bottom??0,bounds.width<640?movement?.bottom??0:0)-bounds.top+12:0;
+      const bottom=hud&&controls?bounds.bottom-controls.top+12:0;
+      root.style.setProperty('--controls-top',`${controls?controls.top-bounds.top:bounds.height}px`);
+      stage.current?.setFraming(top,bottom);
+    };
+    const resize=new ResizeObserver(adapt);resize.observe(root);
+    for(const element of root.querySelectorAll('.topbar,.movement-hud,.timeline'))resize.observe(element);
+    adapt();return()=>resize.disconnect();
+  },[hud,timeline]);
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !dialog.current?.open) { setInfo(false); setHud(true); return; }
+      if (e.target instanceof HTMLElement && ['INPUT', 'SELECT', 'TEXTAREA', 'BUTTON', 'A'].includes(e.target.tagName)) return;
+      if (dialog.current?.open) return;
+      if (e.code === 'Space') { e.preventDefault(); dispatch({ type: 'toggle' }); }
+      if (e.code === 'ArrowRight') { e.preventDefault(); dispatch({ type: 'seek', index: live.current.index + 1 }); }
+      if (e.code === 'ArrowLeft') { e.preventDefault(); dispatch({ type: 'seek', index: live.current.index - 1 }); }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
+  useEffect(() => {
+    if (showSources) dialog.current?.showModal(); else dialog.current?.close();
+  }, [showSources]);
+  useEffect(() => { if (!hud) showHud.current?.focus(); }, [hud]);
+  useEffect(()=>{const compact=matchMedia('(max-width: 640px), (max-height: 600px)');const adapt=()=>{if(compact.matches)setCameraTools(false);};compact.addEventListener('change',adapt);return()=>compact.removeEventListener('change',adapt);},[]);
+  useEffect(() => {
+    const shortViewport=matchMedia('(max-height: 600px), (max-width: 350px)');
+    const adapt=()=>{if(shortViewport.matches)setTimeline(false);};
+    adapt();shortViewport.addEventListener('change',adapt);
+    return()=>shortViewport.removeEventListener('change',adapt);
+  }, []);
+  useEffect(() => {
+    list.current?.querySelector('[aria-current="step"]')?.scrollIntoView({ block: 'nearest', inline: 'center' });
+  }, [player.index]);
+  function camera(v: CameraView) { setView(v); stage.current?.preset(v); }
+
+  return <main className="studio" aria-label="Songahm Trainer · estúdio de treino" data-hud={hud ? 'on' : 'off'}>
+    <div className="stage" ref={host} />
+    <span id="camera-help" className="sr-only">Palco 3D: Tab para focar. Setas giram a câmera; mais e menos dão zoom; Home restaura; Tab sai do palco. Espaço reproduz ou pausa.</span>
+    {error && <div className="stage-error" role="alert">{error}</div>}
+    {!hud && <button className="restore-hud glass" ref={showHud} onClick={() => setHud(true)}>Mostrar controles <kbd>Esc</kbd></button>}
+    {hud && <>
+      <header className="topbar glass">
+        <div className="brand"><span className="brand-mark">松</span><div><strong>Songahm Trainer</strong><small>ESTÚDIO DE FORMAS · 01</small></div></div>
+        <nav className="modes" aria-label="Modo de treino">
+          {(['Aprender', 'Praticar', 'Revisar'] as Mode[]).map(mode => <button key={mode} aria-pressed={player.mode === mode} title={modes[mode]} onClick={() => dispatch({ type: 'mode', mode })}>{mode}</button>)}
+        </nav>
+        <div className="top-tools"><button aria-expanded={info} aria-controls="instructions" onClick={() => setInfo(!info)}>Instruções</button><button aria-label="Ocultar controles" title="Ocultar controles; Esc restaura" onClick={() => setHud(false)}>◫</button></div>
+      </header>
+
+      <section className="movement-hud glass" aria-label="Movimento atual" aria-live="polite" aria-atomic="true">
+        <div className="step-header"><span className="eyebrow">SONGAHM 1</span><span><b>{String(m.id).padStart(2, '0')}</b><small> / 18</small></span></div>
+        <h1>{m.title}</h1>
+        <p>{sideName(m.side)} · {m.stance} · {m.direction}</p>
+        <div className="phase"><i className={player.playing ? 'live-dot playing' : 'live-dot'} /><span>{status}</span><span>{compatible ? '3D compatível' : '3D'}</span></div>
+      </section>
+
+      <nav className="camera-bar glass" aria-label="Câmera" data-expanded={cameraTools}>
+        <button className="camera-toggle" aria-expanded={cameraTools} aria-controls="camera-presets" onClick={()=>setCameraTools(!cameraTools)}>Câmera {cameraTools?'⌃':'⌄'}</button>
+        {cameraTools&&<div className="camera-presets" id="camera-presets">
+        {(['Livre', 'Frente', 'Lateral', 'Costas', 'Topo'] as CameraView[]).map(v => <button key={v} aria-pressed={view === v} onClick={() => camera(v)}>{v}</button>)}
+        <button onClick={() => camera('Livre')} aria-label="Restaurar câmera" title="Restaurar câmera">↺</button></div>}
+      </nav>
+      <span className="orbit-hint">Arraste para orbitar · pinça para zoom · Tab para câmera por teclado</span>
+
+      {info && <aside className="info-panel glass" id="instructions" aria-label="Instruções do movimento">
+        <div className="panel-title"><h2>Estudar a técnica</h2><button onClick={() => setInfo(false)} aria-label="Fechar instruções">×</button></div>
+        <p className="mode-help">{modes[player.mode]}</p>
+        <dl><div><dt>Lado ativo</dt><dd>{sideName(m.side)}</dd></div><div><dt>Base</dt><dd>{m.stance}</dd></div><div><dt>Direção / altura</dt><dd>{m.direction} · {m.height}</dd></div><div><dt>Passo e giro</dt><dd>{m.turn}</dd></div></dl>
+        <p className="eyebrow">OBSERVE</p><p className="attention">{m.note}</p>
+        <div className="validation"><strong>Sequência conferida</strong><p>{m.source} · movimento {m.id}.<br />Animação aproximada, sem revisão marcial.</p><button className="text-button" onClick={() => setShowSources(true)}>Fontes e limites ↗</button></div>
+        <p className="keyboard-help">Fora do palco: ← → navegam. No palco: setas giram, +/− dão zoom e Home restaura. Espaço pausa.</p>
+      </aside>}
+
+      <section className="timeline glass" aria-label="Controles de treino" data-collapsed={!timeline}>
+        <div className="timeline-header"><span><b>{String(m.id).padStart(2, '0')}</b> / 18 <span className="phase-name">· {phase}</span></span><button onClick={() => setTimeline(!timeline)} aria-expanded={timeline} aria-controls="technique-timeline">{timeline ? 'Recolher timeline' : 'Expandir timeline'} {timeline ? '⌄' : '⌃'}</button></div>
+        {timeline && <div id="technique-timeline">
+          <div className="scrub"><label htmlFor="technique-time">Instante da técnica</label><input id="technique-time" type="range" min="0" max={duration} step="0.01" value={player.time} aria-valuetext={`${player.time.toFixed(2)} segundos; ${phase}`} onChange={e => dispatch({ type: 'scrub', time: Number(e.target.value) })} /><output>{player.time.toFixed(1)}s</output></div>
+          <div className="step-list" ref={list} aria-label="Movimentos da forma">{lesson.movements.map((step, i) => <button key={step.id} aria-label={`Movimento ${step.id}: ${step.title}, ${sideName(step.side)}`} aria-current={player.index === i ? 'step' : undefined} title={`${step.title} · ${sideName(step.side)}`} onClick={() => dispatch({ type: 'seek', index: i })}><span>{String(step.id).padStart(2, '0')}</span><small>{step.side === 'L' ? 'E' : 'D'}</small></button>)}</div>
+        </div>}
+        <div className="transport">
+          <div className="transport-main"><button aria-label="Reiniciar aula" title="Reiniciar aula" onClick={() => dispatch({ type: 'restart' })}>↺</button><button disabled={player.index === 0} aria-label="Movimento anterior" onClick={() => dispatch({ type: 'seek', index: player.index - 1 })}>‹</button><button className="play" onClick={() => dispatch({ type: 'toggle' })}>{player.playing ? 'Ⅱ Pausar' : player.time >= duration && !player.finished ? '▶ Continuar' : player.finished ? '▶ Rever aula' : '▶ Reproduzir'}</button><button disabled={player.index === 17} aria-label="Próximo movimento" onClick={() => dispatch({ type: 'seek', index: player.index + 1 })}>›</button><button className="repeat" onClick={() => dispatch({ type: 'repeat' })}>Repetir técnica</button></div>
+          <label className="speed"><span>Ritmo</span><select aria-label="Velocidade" value={player.speed} onChange={e => dispatch({ type: 'speed', speed: Number(e.target.value) })}>{[.25, .5, .75, 1].map(s => <option key={s} value={s}>{String(s).replace('.', ',')}×</option>)}</select></label>
+          <button className="source-link" onClick={() => setShowSources(true)}>Fontes e limites ↗</button>
+        </div>
+      </section>
+    </>}
+
+    <dialog className="sources glass" ref={dialog} aria-labelledby="source-title" onClose={() => setShowSources(false)}>
+      <div className="panel-title"><h2 id="source-title">Referências e limites</h2><button onClick={() => setShowSources(false)} aria-label="Fechar fontes">×</button></div>
+      <p>A ordem dos 18 movimentos, membros, bases, direções e alturas foi conferida nos documentos abaixo. Cada número da aula corresponde ao mesmo número nas fontes.</p>
+      {sources.map(s => <p key={s.id}><a href={s.url} target="_blank" rel="noreferrer">{s.title} ↗</a><br /><small>{s.detail}</small></p>)}
+      <p><strong>Execução visual aproximada.</strong> Preparação, ângulos, pivôs, passada #3, distribuição de peso e tempos exigem revisão de instrutor. O controle de instante ajuda a observar fases; não representa medição biomecânica.</p>
+      <p>Chutes terminam recolhidos; o apoio final integra os movimentos 4/8 e 13/17. Retorno Bah Ro ainda não é animado. Produto independente, sem afiliação, certificação ou endosso da ATA.</p>
+    </dialog>
+  </main>;
 }
-createRoot(document.getElementById('root')!).render(<React.StrictMode><App/></React.StrictMode>);
+createRoot(document.getElementById('root')!).render(<React.StrictMode><App /></React.StrictMode>);

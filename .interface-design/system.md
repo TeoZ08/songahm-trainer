@@ -1,4 +1,5 @@
-# Sala de treino
-Aluno autônomo; observar, repetir e memorizar com calma. Palco amplo de tatame, instrução ao lado e transporte abaixo. Assinatura: linha de percurso leste–oeste e numeração editorial dos movimentos.
-Paleta: papel #f6f5f0, tatame #e5e7df, grafite #28332f, pinho #305c48, argila #ad6845. Pinho é o único acento interativo; argila indica limitações.
-Espaçamento: 4, 8, 12, 16, 24, 32, 48 px. Profundidade por superfícies e linhas finas, sem pilhas de sombras. Tipografia sans do sistema e títulos serifados. Estados de foco visíveis, alvos de 44 px e botões nativos. Mobile empilha palco/instrução/controles, sem sobreposição fixa. Sem métricas, gradientes decorativos ou ícones sem função. Movimento corporal é conteúdo pedagógico; UI sem animação ornamental e reprodução inicia pausada.
+# Estúdio de formas — revisão 02
+Usuário: aluno treinando e memorizando Songahm 1. Tarefa: observar corpo e apoios de diferentes ângulos, controlar fases e repetir. Sensação: estúdio técnico calmo e preciso.
+Viewport integral em 100dvh; HUDs flutuantes, informações recolhíveis e timeline inferior. Personagem claro em ambiente grafite, membro ativo verde. Sem herói editorial ou rodapé. Controles podem ser ocultados e restaurados por botão ou Esc.
+Tokens: fundo #1a2325, painel #182123eb, texto #e8ede4, secundário #a6b6ad, linhas #46564e, acento #bad5a8. Spacing 4/8/12/16/24/32/48. Uma camada de profundidade por painéis opacos translúcidos, linhas finas e sombra leve. Tipografia sans do sistema; contagem monoespaçada.
+Mobile: safe areas, timeline horizontal rolável, ferramentas de câmera laterais, painel sobreposto e recolhível. Botões de toque, foco evidente, modal nativo para fontes. Sem movimento ornamental. Reprodução inicia pausada; movimento corporal só por comando do aluno. Sem dashboard de métricas, gradientes decorativos ou ícones sem função.
