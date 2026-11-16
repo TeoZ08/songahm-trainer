@@ -132,8 +132,8 @@ function App() {
         <dl><div><dt>Lado ativo</dt><dd>{sideName(m.side)}</dd></div><div><dt>Base</dt><dd>{m.stance}</dd></div><div><dt>Direção / altura</dt><dd>{m.direction} · {m.height}</dd></div><div><dt>Passo e giro</dt><dd>{m.turn}</dd></div></dl>
         <p>{m.plan.instruction.support}</p><p>{m.plan.instruction.body}</p><p>{m.plan.instruction.trajectory}</p><p>{m.plan.instruction.hands}</p>
         <ol className="phase-list">{m.plan.motion.phases.map(p=><li key={p.at} aria-current={phase===p.label?'step':undefined}>{p.label}</li>)}</ol>
-        <p className="eyebrow">OBSERVE</p><p className="attention">{m.note}</p>
-        <div className="validation"><strong>Sequência conferida</strong><p>{m.source} · movimento {m.id}.<br />Animação aproximada, sem revisão marcial.</p><button className="text-button" onClick={() => setShowSources(true)}>Fontes e limites ↗</button></div>
+        <p className="eyebrow">OBSERVE</p><p className="attention">{m.plan.instruction.cues.join(' · ')}</p><p className="attention">{m.note}</p>
+        <div className="validation"><strong>Sequência conferida</strong><p>{m.source} · movimento {m.id}.<br />{m.plan.instruction.uncertainty} Sem revisão marcial.</p><button className="text-button" onClick={() => setShowSources(true)}>Fontes e limites ↗</button></div>
         <p className="keyboard-help">Fora do palco: ← → navegam. No palco: setas giram, +/− dão zoom e Home restaura. Espaço pausa.</p>
       </aside>}
 

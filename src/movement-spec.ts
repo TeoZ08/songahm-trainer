@@ -70,6 +70,7 @@ function sideMotion(sign:number):SideMotion {
 }
 
 export function createPlan(m:MovementIdentity):MovementPlan {
+  const handSide=m.side==='L'?'esquerda':'direita';
   const sign=m.side==='L'?-1:1,other=opposite(m.side),kick=m.technique==='sideKick'||m.technique==='frontKick';
   const targetBearing=m.direction==='Leste'?0:Math.PI;
   const placement:MovementPlan['base']['placement']=m.technique==='sideKick'?'sideCycle':m.technique==='frontKick'?'frontKick':m.technique==='inner'?'middleTurn':m.technique==='knife'?'middleLand':m.step==='hold'?'hold':'front';
@@ -93,11 +94,11 @@ export function createPlan(m:MovementIdentity):MovementPlan {
     base:{initial:m.id===1?'Base paralela':m.technique==='sideKick'?'Base média':m.technique==='frontKick'?'Base frontal':'Base do movimento anterior',final:m.technique==='sideKick'?'Base média na entrada da próxima técnica':m.stance,placement,stride:.55,width:.68,...(m.technique==='sideKick'?{boundaryOwner:m.id+1}:{})},
     constraints:{...limits},motion,
     instruction:{
-      goal:`${m.title} ${m.height.toLowerCase()} em direção ${m.direction.toLowerCase()}.`,
+      goal:`${m.title} em altura ${m.height.toLowerCase()}, para ${m.direction.toLowerCase()}.`,
       body:m.technique==='sideKick'?'Oriente pelve e abdômen juntos na câmara; abra o quadril para estender lateralmente e incline o tronco para equilibrar.':m.technique==='frontKick'?'Transfira o peso ao apoio, eleve o joelho e acompanhe com uma pequena compensação do tronco.':'Prepare o braço sem perder a base; acompanhe o alcance com o ombro e o tronco.',
       support:m.technique==='sideKick'?`${support} Pivô para fora: afaste os dedos do alvo e oriente o calcanhar para ele, mantendo a planta no chão.`:support,
-      trajectory:m.technique==='sideKick'?`Feche a distância, recolha o joelho, gire o conjunto, estenda para ${m.direction.toLowerCase()} e recolha antes de apoiar na entrada do movimento ${m.id+1}.`:m.technique==='frontKick'?`Joelho sobe, perna estende para a frente e recolhe; o apoio vem no movimento ${m.id+1}.`:`Leve a mão ${sideWord(m.side)} ao alvo; ${m.technique==='inner'||m.technique==='high'?'preserve a flexão do cotovelo.':'estenda sem travar o cotovelo.'}`,
-      hands:kick?'Mantenha a guarda e use o braço oposto para equilibrar, sem cruzar o tronco.':`Mão ${sideWord(m.side)} executa a técnica; o outro braço recolhe para a guarda.`,
+      trajectory:m.technique==='sideKick'?`Feche a distância, recolha o joelho, gire o conjunto, estenda para ${m.direction.toLowerCase()} e recolha antes de apoiar na entrada do movimento ${m.id+1}.`:m.technique==='frontKick'?`Joelho sobe, perna estende para a frente e recolhe; o apoio vem no movimento ${m.id+1}.`:`Leve a mão ${handSide} ao alvo; ${m.technique==='inner'||m.technique==='high'?'preserve a flexão do cotovelo.':'estenda sem travar o cotovelo.'}`,
+      hands:kick?'Mantenha a guarda e use o braço oposto para equilibrar, sem cruzar o tronco.':`Mão ${handSide} executa a técnica; o outro braço recolhe para a guarda.`,
       cues:m.technique==='sideKick'?[`Apoio ${sideWord(other)}`,`Alvo ${m.direction.toLowerCase()}`,'Calcanhar ao alvo','Quadril e abdômen juntos']:['Base estável','Lado do corpo, não da tela','Recolher com controle'],
       uncertainty:m.technique==='sideKick'?`Tempos, amplitudes e passada #3 são aproximações. A aterrissagem é compartilhada com a entrada do movimento ${m.id+1}; o golpe de braço só ocorre nele.`:'Sequência documentada; preparação, ângulos e tempos do boneco são aproximações visuais.',
     },

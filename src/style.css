@@ -35,3 +35,6 @@
 
 .movement-hud>.support-cue{color:#85cbd1;margin-top:4px;font-size:10px}
 @media(max-width:640px){.movement-hud>.support-cue{font-size:9px}}
+
+@media(max-width:350px){.preparation div{max-height:72px}}
+@media(max-width:640px){.studio:has(.preparation) .movement-hud{display:none}}

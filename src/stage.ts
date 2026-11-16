@@ -62,6 +62,17 @@ export function createStage(host:HTMLDivElement,getPlayer:()=>Player,onError:(me
   arrow.position.set(p.root[0]+.6,.04,p.root[2]);arrow.setDirection(new THREE.Vector3(0,0,lesson.movements[state.index].direction==='Leste'?1:-1));
   const support=lesson.movements[state.index].plan.roles.supportFoot;supportArrow.visible=support!=='both';if(support!=='both'){const f=p.feet[support],plant=plantarCenter(f);supportArrow.position.set(plant[0],.035,plant[2]);supportArrow.setDirection(new THREE.Vector3(...rotate([0,0,1],f.yaw)));}
   controls.update();renderer.render(scene,camera);
+  // Screen-space bounds let browser QA detect HUD occlusion of the actual rig.
+  const bounds={left:Infinity,top:Infinity,right:-Infinity,bottom:-Infinity};
+  for(const [name,part] of Object.entries(parts)){
+   if(name.endsWith('marker'))continue;
+   const box=new THREE.Box3().setFromObject(part);
+   for(const x of [box.min.x,box.max.x])for(const y of [box.min.y,box.max.y])for(const z of [box.min.z,box.max.z]){
+    const q=new THREE.Vector3(x,y,z).project(camera),sx=(q.x+1)*host.clientWidth/2,sy=(1-q.y)*host.clientHeight/2;
+    bounds.left=Math.min(bounds.left,sx);bounds.right=Math.max(bounds.right,sx);bounds.top=Math.min(bounds.top,sy);bounds.bottom=Math.max(bounds.bottom,sy);
+   }
+  }
+  host.dataset.bodyBounds=JSON.stringify(bounds);
  }
  let frame=0,disposed=false,last=0;
  let topInset=0,bottomInset=0;
@@ -70,7 +81,7 @@ export function createStage(host:HTMLDivElement,getPlayer:()=>Player,onError:(me
   const {width,height}=host.getBoundingClientRect();if(!width||!height)return;
   const available=Math.max(80,height-topInset-bottomInset);
   // Keep the full-size viewport; shift its optical center into the free HUD area.
-  camera.fov=Math.max(36,Math.min(85,THREE.MathUtils.radToDeg(2*Math.atan(Math.tan(THREE.MathUtils.degToRad(18))*height/available*.72))));
+  camera.fov=Math.max(36,Math.min(135,THREE.MathUtils.radToDeg(2*Math.atan(Math.tan(THREE.MathUtils.degToRad(18))*height/available*.72))));
   const center=topInset+available/2;
   camera.setViewOffset(width,height,0,height/2-center,width,height);
   renderer.setSize(width,height);

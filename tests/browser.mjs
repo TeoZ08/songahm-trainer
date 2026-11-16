@@ -137,6 +137,10 @@ try {
     await page.getByRole('button',{name:'Próximo movimento',exact:true}).click();
     await page.locator('.preparation').waitFor();await page.clock.runFor(1000);
     assert.equal(await page.getByRole('button',{name:'Demonstrar',exact:false}).count(),1);
+    const rig=JSON.parse(await page.locator('.stage').getAttribute('data-body-bounds')),prep=await page.locator('.preparation').boundingBox(),controls=await page.locator('.timeline').boundingBox();
+    if(width<=640)assert.ok(rig.top>=(await page.locator('.topbar').boundingBox()).height+4,'Rig below mobile header');
+    if(width<=640)assert.ok(rig.bottom<=controls.y+4,`${width}: rig above preparation ${rig.bottom}/${controls.y}`);
+    else assert.ok(rig.left>=prep.x+prep.width-4,'Landscape rig outside preparation column');
     await shot(`preparation-${width}`);
     await page.locator('.preparation summary').click();await shot(`preparation-folded-${width}`);
     await page.getByRole('button',{name:'Revisar',exact:true}).click();
