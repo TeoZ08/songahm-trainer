@@ -16,3 +16,22 @@
 .camera-bar button.camera-toggle{font-size:10px;min-height:44px;white-space:nowrap;padding:4px}
 .info-panel{--panel-top:calc(max(16px,env(safe-area-inset-top)) + 84px);max-height:max(80px,calc(var(--controls-top,100dvh) - var(--panel-top) - 12px))}
 @media(max-width:640px){.info-panel{--panel-top:calc(max(8px,env(safe-area-inset-top)) + 108px)}}
+
+/* Preparation is part of the measured HUD: the rig stays in the free viewport. */
+.preparation {border-bottom:1px solid var(--line, #39483e);padding:0 0 8px;margin-bottom:8px;max-width:960px}
+.preparation summary {cursor:pointer;font-size:13px;font-weight:600;color:#bad5a8;min-height:32px;display:list-item;margin-left:16px}
+.preparation div {max-height:150px;overflow:auto;padding-right:8px}
+.preparation p {font-size:12px;line-height:1.45;margin:4px 0;color:#c5d1c8}
+.preparation strong {color:#e8ede4;font-weight:500}
+.phase-list {padding-left:20px;font-size:12px;line-height:1.7;color:#a6b6ad}
+.phase-list [aria-current] {color:#bad5a8;font-weight:600}
+@media(max-width:640px),(max-height:600px){.preparation div{max-height:112px}.preparation summary{font-size:11px;min-height:32px}.preparation p{font-size:11px}}
+
+@media(max-height:600px) and (min-width:641px){
+ .studio:has(.preparation) .movement-hud{display:none}
+ .preparation{position:absolute;left:0;bottom:calc(100% + 8px);width:270px;max-height:calc(100dvh - 220px);overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px;margin:0}
+ .preparation div{max-height:none}
+}
+
+.movement-hud>.support-cue{color:#85cbd1;margin-top:4px;font-size:10px}
+@media(max-width:640px){.movement-hud>.support-cue{font-size:9px}}

@@ -1,6 +1,6 @@
 # Songahm Trainer · Estúdio de formas
 
-Revisão 02 conforme [GOAL-REV02.md](GOAL-REV02.md). Instrutor 3D independente para estudar Songahm 1, com viewport integral, HUD recolhível, fases inspecionáveis e 18 movimentos rastreáveis. Interface PT-BR; sem login, câmera de avaliação, serviços externos em runtime ou assets de terceiros.
+Revisão 03 conforme [GOAL-REV03.md](GOAL-REV03.md). Instrutor 3D independente para estudar Songahm 1, com viewport integral, HUD recolhível, fases inspecionáveis e 18 movimentos rastreáveis. Interface PT-BR; sem login, câmera de avaliação, serviços externos em runtime ou assets de terceiros.
 
 ```sh
 npm ci
@@ -17,16 +17,18 @@ BROWSER=chromium TEST_URL=http://127.0.0.1:5173 npm run test:browser
 
 Node 22.18+ ou 24. O teste padrão usa Firefox do Playwright (`npx playwright install firefox`, se ausente). `BROWSER=chromium` usa Chrome em `/usr/bin/google-chrome`; `CHROME_PATH` permite outro caminho. Sem `TEST_URL`, o teste serve o bundle de produção por interceptação HTTP. As capturas ficam em `artifacts/`, ignorado pelo Git.
 
-- **Aprender:** explicações, ritmo inicial 0,5× e pausa a cada técnica. **Praticar:** demonstração que espera por você. **Revisar:** sequência contínua.
+- **Aprender:** preparação recolhível antes de cada técnica; o aluno inicia com **Demonstrar**. Ritmo inicial 0,5×. Continuar abre a preparação seguinte, sem autoplay; repetir também permite reler. **Praticar:** demonstração que espera por você. **Revisar:** sequência contínua.
 - Timeline: selecionar movimento, inspecionar o instante, pausar/retomar, anterior/próximo, repetir, reiniciar e ritmos 0,25×/0,5×/0,75×/1×. O controle de instante pausa a animação para estudar uma fase.
 - Câmera: órbita, zoom e presets relativos ao corpo. Com o palco focado por Tab: setas giram, +/− dão zoom, Home restaura e Tab sai. Fora do palco: setas navegam. Espaço reproduz/pausa. Esc fecha instruções ou restaura o HUD.
 - Instruções e fontes são recolhíveis. A timeline pode ser reduzida; em telas baixas inicia recolhida. “Ocultar controles” libera todo o palco. Reprodução sempre começa pausada, inclusive com movimento reduzido.
 
 ## Implementação
 
-React + Vite + TypeScript e Three.js direto, sem wrappers ou biblioteca de estado. `lesson.ts` guarda conteúdo e fontes; `motion.ts` contém poses, fases, transformações do tronco e IK analítica de dois segmentos; `player.ts`, timeline determinística; `stage.ts`, cena/câmera; `main.tsx` e `style.css`, HUD responsivo. Não depende do Blender.
+React + Vite + TypeScript e Three.js direto, sem wrappers ou biblioteca de estado. `lesson.ts` guarda fatos e fontes; `movement-spec.ts` define fases, papéis, metas, limites e instruções dos 18 movimentos; `motion.ts` consome essa especificação e resolve transformações e IK analítica de dois segmentos; `player.ts`, timeline determinística; `stage.ts`, cena/câmera; `main.tsx` e `style.css`, HUD responsivo. Não depende do Blender.
 
-Chutes frontal/lateral têm trajetórias distintas, recolhimento, reação do quadril/tronco, guarda e pivô do apoio. Pés de apoio usam coordenadas do tatame. A aterrissagem conserva a numeração oficial: 4/8 e 13/17. Mão aberta (8/17) tem extensão própria; defesa interna (6/15) mantém flexão. WebGL é preferido (até 30 fps); SVGRenderer conserva geometria, projeção e órbita quando WebGL está indisponível (20 fps, materiais simples e sem sombras).
+Nos laterais #7 (direito, apoio esquerdo) e #16 (esquerdo, apoio direito), o fechamento precede câmara/giro conjunto de pelve e tórax, pivô plantar, extensão no referencial local do quadril, recolhimento e aterrissagem. O apoio ciano tem seta dos dedos; o alvo mantém seta verde. A planta fica fixa durante o pivô, enquanto o tornozelo percorre seu arco. A aterrissagem é compartilhada com a entrada de 8/17; o golpe de braço só acontece nesses movimentos. Frontais conservam o recolhimento e apoiam em 4/13. Mão aberta (8/17) tem extensão própria; defesa interna (6/15) mantém flexão. WebGL é preferido (até 30 fps); SVGRenderer conserva geometria, projeção e órbita quando WebGL está indisponível (20 fps, materiais simples e sem sombras).
+
+Para reproduzir as medidas do simulador: `node --experimental-strip-types scripts/motion-evidence.ts`. O JSON fica em `artifacts/rev03/kinematics.json`; são medidas do motor, não ângulos medidos nas referências.
 
 ## Fontes e limites
 

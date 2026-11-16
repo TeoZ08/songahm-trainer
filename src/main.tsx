@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { lesson, sideName, sources } from './lesson.ts';
 import { duration, initial, update, type Action, type Mode } from './player.ts';
 import { createStage, type CameraView } from './stage.ts';
+import {phaseAt,sideWord} from './movement-spec.ts';
 import './style.css';
 
 function App() {
@@ -23,13 +24,9 @@ function App() {
   const list = useRef<HTMLDivElement>(null);
   live.current = player;
   const m = lesson.movements[player.index];
-  const status = player.finished ? 'Aula concluída' : player.playing ? 'Demonstrando' : player.time >= duration ? 'Movimento concluído' : player.time > 0 ? 'Pausado' : 'Pronto para começar';
+  const status = player.finished ? 'Aula concluída' : player.awaitingPreparation ? 'Leia a preparação' : player.playing ? 'Demonstrando' : player.time >= duration ? 'Movimento concluído' : player.time > 0 ? 'Pausado' : 'Pronto para começar';
   const progress = player.time / duration;
-  const phase = m.technique === 'sideKick'
-    ? progress < .18 ? 'Aproximação' : progress < .44 ? 'Câmara e pivô' : progress < .66 ? 'Extensão lateral' : progress < .88 ? 'Recolhimento' : 'Preparar apoio'
-    : m.technique === 'frontKick'
-      ? progress < .14 ? 'Transferência de peso' : progress < .32 ? 'Elevar o joelho' : progress < .58 ? 'Extensão frontal' : progress < .82 ? 'Recolhimento' : 'Preparar apoio'
-      : progress < .28 ? 'Preparação' : progress < .72 ? 'Execução' : 'Base final';
+  const phase = phaseAt(m.plan,progress).label;
   const modes: Record<Mode, string> = {
     Aprender: 'Demonstração lenta, um movimento por vez. Continue quando estiver pronto.',
     Praticar: 'Faça junto. A demonstração espera por você entre os movimentos.',
@@ -117,6 +114,7 @@ function App() {
         <div className="step-header"><span className="eyebrow">SONGAHM 1</span><span><b>{String(m.id).padStart(2, '0')}</b><small> / 18</small></span></div>
         <h1>{m.title}</h1>
         <p>{sideName(m.side)} · {m.stance} · {m.direction}</p>
+        {m.plan.roles.supportFoot!=='both'&&<p className="support-cue">Apoio {sideWord(m.plan.roles.supportFoot)} · pé {sideWord(m.side)} golpeia</p>}
         <div className="phase"><i className={player.playing ? 'live-dot playing' : 'live-dot'} /><span>{status}</span><span>{compatible ? '3D compatível' : '3D'}</span></div>
       </section>
 
@@ -132,19 +130,26 @@ function App() {
         <div className="panel-title"><h2>Estudar a técnica</h2><button onClick={() => setInfo(false)} aria-label="Fechar instruções">×</button></div>
         <p className="mode-help">{modes[player.mode]}</p>
         <dl><div><dt>Lado ativo</dt><dd>{sideName(m.side)}</dd></div><div><dt>Base</dt><dd>{m.stance}</dd></div><div><dt>Direção / altura</dt><dd>{m.direction} · {m.height}</dd></div><div><dt>Passo e giro</dt><dd>{m.turn}</dd></div></dl>
+        <p>{m.plan.instruction.support}</p><p>{m.plan.instruction.body}</p><p>{m.plan.instruction.trajectory}</p><p>{m.plan.instruction.hands}</p>
+        <ol className="phase-list">{m.plan.motion.phases.map(p=><li key={p.at} aria-current={phase===p.label?'step':undefined}>{p.label}</li>)}</ol>
         <p className="eyebrow">OBSERVE</p><p className="attention">{m.note}</p>
         <div className="validation"><strong>Sequência conferida</strong><p>{m.source} · movimento {m.id}.<br />Animação aproximada, sem revisão marcial.</p><button className="text-button" onClick={() => setShowSources(true)}>Fontes e limites ↗</button></div>
         <p className="keyboard-help">Fora do palco: ← → navegam. No palco: setas giram, +/− dão zoom e Home restaura. Espaço pausa.</p>
       </aside>}
 
       <section className="timeline glass" aria-label="Controles de treino" data-collapsed={!timeline}>
+        {player.mode==='Aprender'&&player.awaitingPreparation&&<details className="preparation" open key={m.id}>
+          <summary>Antes de demonstrar · {String(m.id).padStart(2,'0')} · {m.title}</summary>
+          <div><p><strong>{sideName(m.side)} · {m.plan.base.final} · alvo {m.direction.toLowerCase()}</strong></p>
+          <p>{m.plan.instruction.support}</p><p>{m.plan.instruction.body} {m.plan.instruction.trajectory}</p><p>{m.plan.instruction.hands}</p></div>
+        </details>}
         <div className="timeline-header"><span><b>{String(m.id).padStart(2, '0')}</b> / 18 <span className="phase-name">· {phase}</span></span><button onClick={() => setTimeline(!timeline)} aria-expanded={timeline} aria-controls="technique-timeline">{timeline ? 'Recolher timeline' : 'Expandir timeline'} {timeline ? '⌄' : '⌃'}</button></div>
         {timeline && <div id="technique-timeline">
           <div className="scrub"><label htmlFor="technique-time">Instante da técnica</label><input id="technique-time" type="range" min="0" max={duration} step="0.01" value={player.time} aria-valuetext={`${player.time.toFixed(2)} segundos; ${phase}`} onChange={e => dispatch({ type: 'scrub', time: Number(e.target.value) })} /><output>{player.time.toFixed(1)}s</output></div>
           <div className="step-list" ref={list} aria-label="Movimentos da forma">{lesson.movements.map((step, i) => <button key={step.id} aria-label={`Movimento ${step.id}: ${step.title}, ${sideName(step.side)}`} aria-current={player.index === i ? 'step' : undefined} title={`${step.title} · ${sideName(step.side)}`} onClick={() => dispatch({ type: 'seek', index: i })}><span>{String(step.id).padStart(2, '0')}</span><small>{step.side === 'L' ? 'E' : 'D'}</small></button>)}</div>
         </div>}
         <div className="transport">
-          <div className="transport-main"><button aria-label="Reiniciar aula" title="Reiniciar aula" onClick={() => dispatch({ type: 'restart' })}>↺</button><button disabled={player.index === 0} aria-label="Movimento anterior" onClick={() => dispatch({ type: 'seek', index: player.index - 1 })}>‹</button><button className="play" onClick={() => dispatch({ type: 'toggle' })}>{player.playing ? 'Ⅱ Pausar' : player.time >= duration && !player.finished ? '▶ Continuar' : player.finished ? '▶ Rever aula' : '▶ Reproduzir'}</button><button disabled={player.index === 17} aria-label="Próximo movimento" onClick={() => dispatch({ type: 'seek', index: player.index + 1 })}>›</button><button className="repeat" onClick={() => dispatch({ type: 'repeat' })}>Repetir técnica</button></div>
+          <div className="transport-main"><button aria-label="Reiniciar aula" title="Reiniciar aula" onClick={() => dispatch({ type: 'restart' })}>↺</button><button disabled={player.index === 0} aria-label="Movimento anterior" onClick={() => dispatch({ type: 'seek', index: player.index - 1 })}>‹</button><button className="play" onClick={() => dispatch({ type: 'toggle' })}>{player.awaitingPreparation ? '▶ Demonstrar' : player.playing ? 'Ⅱ Pausar' : player.time >= duration && !player.finished ? '▶ Continuar' : player.finished ? '▶ Rever aula' : '▶ Reproduzir'}</button><button disabled={player.index === 17} aria-label="Próximo movimento" onClick={() => dispatch({ type: 'seek', index: player.index + 1 })}>›</button><button className="repeat" onClick={() => dispatch({ type: 'repeat' })}>Repetir técnica</button></div>
           <label className="speed"><span>Ritmo</span><select aria-label="Velocidade" value={player.speed} onChange={e => dispatch({ type: 'speed', speed: Number(e.target.value) })}>{[.25, .5, .75, 1].map(s => <option key={s} value={s}>{String(s).replace('.', ',')}×</option>)}</select></label>
           <button className="source-link" onClick={() => setShowSources(true)}>Fontes e limites ↗</button>
         </div>
@@ -156,7 +161,7 @@ function App() {
       <p>A ordem dos 18 movimentos, membros, bases, direções e alturas foi conferida nos documentos abaixo. Cada número da aula corresponde ao mesmo número nas fontes.</p>
       {sources.map(s => <p key={s.id}><a href={s.url} target="_blank" rel="noreferrer">{s.title} ↗</a><br /><small>{s.detail}</small></p>)}
       <p><strong>Execução visual aproximada.</strong> Preparação, ângulos, pivôs, passada #3, distribuição de peso e tempos exigem revisão de instrutor. O controle de instante ajuda a observar fases; não representa medição biomecânica.</p>
-      <p>Chutes terminam recolhidos; o apoio final integra os movimentos 4/8 e 13/17. Retorno Bah Ro ainda não é animado. Produto independente, sem afiliação, certificação ou endosso da ATA.</p>
+      <p>Chutes frontais terminam recolhidos e apoiam em 4/13. Nos laterais, a aterrissagem é compartilhada com a entrada de 8/17; o golpe de braço ocorre somente nesses movimentos. Retorno Bah Ro ainda não é animado. Produto independente, sem afiliação, certificação ou endosso da ATA.</p>
     </dialog>
   </main>;
 }

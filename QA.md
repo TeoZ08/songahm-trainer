@@ -1,12 +1,25 @@
-# QA — revisão 02 · 16/11/2026
+# QA — revisão 03 · 16/11/2026
 
-- Instalação limpa: `npm ci --no-audit --no-fund` aprovada. O lockfile local incompleto foi corrigido e voltou a coincidir com o histórico principal; nenhuma dependência declarada foi adicionada.
-- `npm run build` e `npm run build -- --base=/songahm-trainer/`: aprovados, incluindo TypeScript. Bundle principal ~784 kB / 214 kB gzip; permanece o aviso de tamanho do Vite.
-- `npm run lint` e `npm test`: aprovados; 15 testes cobrem modos/timeline, inspeção de fases, continuidade, alcance/IK, apoio, pivôs, participação do tronco e distinção entre extensão da mão aberta e flexão da defesa interna.
-- Navegador real: Chrome WebGL com SwiftShader e Firefox com WebGL desativado para exercitar SVG. Suíte de 18 movimentos, fases dos dois lados, reprodução em andamento, modo/velocidade durante reprodução, pausa/retomada, prática/revisão, presets/órbita/zoom, teclado, HUD/timeline recolhíveis, instruções e modal de fontes.
-- Viewports 1280×900, 390×844, 320×700 e 844×390; sem overflow da página, controles dentro da janela e painel sem cobrir o transporte. Toque/pinça emulados por eventos de dois contatos no Chrome, sem zoom do documento. Perda de contexto WebGL seguida de recarregamento também exercitada.
-- Capturas reais revistas em `artifacts/rev02-webgl/` e `artifacts/rev02-svg/`, incluindo aproximação, câmara, extensão, recolhimento e aterrissagens 4/8/13/17. Ajustados enquadramento óptico, juntas, contraste, orientação dos pés e sobreposições. A baseline foi preservada em `artifacts/rev01/`.
-- Preview de produção: `npm exec vite -- preview --host 127.0.0.1 --port 4173 --base=/songahm-trainer/`. Teste com `BROWSER=chromium TEST_URL=http://127.0.0.1:4173/songahm-trainer/ npm run test:browser`; fallback com `RENDERER=svg`.
-- Workflow original preservada e acrescida de lint/testes antes do build. Histórico principal mantém os commits anteriores; `.git-local` não é necessário para executar ou desenvolver.
-- Validação pública reproduzível: `BROWSER=chromium TEST_URL=https://teoz08.github.io/songahm-trainer/ npm run test:browser`. Conferir também HTTP e caminhos JS/CSS da base publicada.
-- Limites: simulação procedural não certificada, alturas/tempos/pivôs aproximados, retorno Bah Ro não animado. Vídeo público inspecionado por quadros para estudo privado; sem reutilizar vídeo/imagens no produto ou Git. A fotografia mencionada não estava acessível. Não houve teste em iPhone físico nem avaliação de instrutor.
+- `npm ci`, `npm run build`, `npm run lint` e `npm test` aprovados. São 22 testes: estado/gates, 18 especificações, continuidade, IK/alcance, contato real das caixas dos pés, espelhamento, giro conjunto, pivô plantar e aterrissagem. Nenhuma dependência adicionada.
+- Poses fora dos laterais e suas aterrissagens comparadas à Rev02 em cinco instantes: maior diferença numérica 2,23e−16. Não houve tentativa de corrigir técnicas sem nova evidência.
+- Navegador real: Chrome WebGL/SwiftShader e Firefox SVG. Seleção dos 18 movimentos, leitura antes de Demonstrar (#7/#16), espera sem autoplay, Continuar/repetir, execução em andamento, modos/ritmos, câmera/teclado, HUD/timeline, fontes e instruções.
+- Viewports 1280×900, 390×844, 320×700 e 844×390; preparação aberta/recolhida, sem overflow ou controles fora da janela. Landscape mantém preparação na coluna esquerda. Pinça/toque emulados e perda/recuperação do contexto exercitados na suíte Chrome com URL real.
+- Capturas privadas em `artifacts/rev03-webgl/` e `artifacts/rev03-svg/`: #7/#16, aproximação, câmara, pivô, extensão, recolhimento e reconstrução, vistas lateral/superior; interface desktop/mobile revista. Apoio ciano e seta dos dedos distinguem o pivô da seta verde do alvo.
+- Reprodução: `BROWSER=chromium npm run test:browser`; `RENDERER=svg npm run test:browser`. `node --experimental-strip-types scripts/motion-evidence.ts` gera `artifacts/rev03/kinematics.json`.
+
+Comparação explícita **do simulador** (yaw em graus no tatame; zero aponta leste, 180 oeste). Não são ângulos medidos no vídeo ou prescrições técnicas:
+
+| Movimento / instante relativo | Pelve / tórax | Apoio | Pé atacante |
+| --- | --- | --- | --- |
+| 7 / 0,40 · câmara | 139,5 / 139,5 | esquerdo 54 | 139,5 |
+| 7 / 0,52 · pivô | 117 / 117 | esquerdo 0 | 180 |
+| 7 / 0,66 · extensão | 90 / 90 | esquerdo 0 | 180 |
+| 16 / 0,40 · câmara | 40,5 / 40,5 | direito 126 | 40,5 |
+| 16 / 0,52 · pivô | 63 / 63 | direito 180 | 0 |
+| 16 / 0,66 · extensão | 90 / 90 | direito 180 | 0 |
+
+A planta do apoio permanece fixa do instante 0,28 ao 0,80. A extensão do tornozelo no referencial do quadril é lateral (x ±0,86; z 0), em oposição à trajetória frontal. Ambos os pés tocam o chão na key pose 0,91 e a base é reconstruída até 1; essa transição pertence à entrada de 8/17, sem antecipar o golpe de braço.
+
+Fonte ATA novamente conferida: #7 direito, #16 esquerdo, aterrissagens em 8/17. Quadros privados já disponíveis do vídeo de Schafer (22–25 s) revistos: fechamento, mudança de orientação do apoio, inclinação, recolhimento e retorno sustentam a comparação qualitativa. A vista posterior oculta joelho/tornozelo em parte; não permite recuperar valores exatos. Pelve/tórax acoplados e timings são keyframes aproximados, pendentes de revisão marcial. Sem redistribuir quadros/vídeo.
+
+Limites: sem avaliação de instrutor ou iPhone físico; retorno Bah Ro não animado. Aviso de bundle >500 kB permanece. A instalação informa sete avisos moderados na cadeia de ferramentas de lint (não no runtime); não foram feitas atualizações de dependências fora desta revisão.

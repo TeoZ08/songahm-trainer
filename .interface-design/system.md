@@ -1,5 +1,7 @@
-# Estúdio de formas — revisão 02
+# Estúdio de formas — revisão 03
 Usuário: aluno treinando e memorizando Songahm 1. Tarefa: observar corpo e apoios de diferentes ângulos, controlar fases e repetir. Sensação: estúdio técnico calmo e preciso.
 Viewport integral em 100dvh; HUDs flutuantes, informações recolhíveis e timeline inferior. Personagem claro em ambiente grafite, membro ativo verde. Sem herói editorial ou rodapé. Controles podem ser ocultados e restaurados por botão ou Esc.
 Tokens: fundo #1a2325, painel #182123eb, texto #e8ede4, secundário #a6b6ad, linhas #46564e, acento #bad5a8. Spacing 4/8/12/16/24/32/48. Uma camada de profundidade por painéis opacos translúcidos, linhas finas e sombra leve. Tipografia sans do sistema; contagem monoespaçada.
 Mobile: safe areas, timeline horizontal rolável, ferramentas de câmera laterais, painel sobreposto e recolhível. Botões de toque, foco evidente, modal nativo para fontes. Sem movimento ornamental. Reprodução inicia pausada; movimento corporal só por comando do aluno. Sem dashboard de métricas, gradientes decorativos ou ícones sem função.
+
+Aprender: preparação recolhível antes de cada demonstração, sem avanço automático. Conteúdo dentro do HUD medido; em landscape baixo substitui o cartão do movimento na coluna esquerda. Apoio ciano #85cbd1 com seta dos dedos; membro ativo permanece verde. Fases e explicações vêm de movement-spec.ts.

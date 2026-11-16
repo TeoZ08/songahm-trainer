@@ -32,15 +32,15 @@ try {
   if(process.env.RENDERER==='svg')assert.equal(renderer,'svg','Compatibility renderer must be exercised');
   if (chrome) assert.equal(renderer, 'webgl', 'Chrome must exercise WebGL');
   if (renderer === 'svg') assert.ok(await page.locator('.stage svg path').count() > 40);
-  const folder = `artifacts/rev02-${renderer}`;
+  const folder = `artifacts/rev03-${renderer}`;
   await mkdir(folder, { recursive: true });
   const shot = name => page.screenshot({ path: `${folder}/${name}.png` });
-  const current = () => page.locator('[aria-current="step"] span').innerText();
+  const current = () => page.locator('.step-list [aria-current="step"] span').innerText();
   const seek = index => page.getByRole('button', { name: `Movimento ${index}:`, exact: false }).click();
   const scrub = async fraction => {
     const input = page.getByRole('slider', { name: 'Instante da técnica' });
     const rect = await input.boundingBox();
-    await input.click({ position: { x: 8 + (rect.width - 16) * fraction, y: rect.height / 2 } });
+    await input.click({ position: { x: 9 + (rect.width - 16) * fraction, y: rect.height / 2 } });
     assert.ok(Math.abs(Number(await input.inputValue()) / 3.2 - fraction) < .04);
     await page.waitForTimeout(60);
   };
@@ -49,7 +49,7 @@ try {
   assert.ok(stageRect.width >= 1279 && stageRect.height >= 899, 'Viewport fills window');
   await page.clock.install();
   for (const speed of ['0.25', '0.5', '0.75', '1']) await page.getByRole('combobox', { name: 'Velocidade' }).selectOption(speed);
-  await page.getByRole('button', { name: 'Reproduzir', exact: false }).click();
+  await page.getByRole('button', { name: 'Demonstrar', exact: false }).click();
   await page.clock.runFor(800);
   await page.getByRole('button', { name: 'Pausar', exact: false }).click();
   const paused = await page.getByRole('slider').inputValue();
@@ -59,7 +59,7 @@ try {
   await page.getByRole('button', { name: 'Fechar instruções' }).click();
 
   // Replay an actual kick, including a mode/speed change during motion.
-  await seek(3); await page.getByRole('button', { name: 'Repetir técnica' }).click();
+  await seek(3); await page.getByRole('button', { name: 'Repetir técnica' }).click();await page.getByRole('button',{name:'Demonstrar',exact:false}).click();
   await page.clock.runFor(700); await shot('front-moving-chamber');
   const beforeSpeed = Number(await page.getByRole('slider').inputValue());
   await page.getByRole('combobox', { name: 'Velocidade' }).selectOption('.75'.replace(/^\./, '0.'));
@@ -70,6 +70,17 @@ try {
   assert.equal(await current(), '03'); assert.match(await page.locator('.phase').innerText(), /Movimento concluído/);
   await page.getByRole('button', { name: 'Continuar', exact: false }).click(); assert.equal(await current(), '04');
 
+  // Learning explicitly waits before both lateral demonstrations and the next movement.
+  await page.getByRole('button',{name:'Aprender',exact:true}).click();
+  for(const index of [7,16]){
+    await seek(index);assert.equal(await page.locator('.preparation').count(),1);
+    assert.match(await page.locator('.preparation').innerText(),index===7?/apoio esquerdo/:/apoio direito/);
+    await page.clock.runFor(5000);assert.equal(Number(await page.getByRole('slider').inputValue()),0);
+    await shot(`preparation-${index}`);
+    await page.getByRole('button',{name:'Demonstrar',exact:false}).click();await page.clock.runFor(3400);
+    await page.getByRole('button',{name:'Continuar',exact:false}).click();assert.equal(await current(),String(index+1).padStart(2,'0'));
+    assert.equal(await page.locator('.preparation').count(),1);await page.clock.runFor(1000);assert.equal(Number(await page.getByRole('slider').inputValue()),0);
+  }
   // Every movement renders through the learner's phase control, including both kick sides.
   for (let index = 1; index <= 18; index++) {
     await seek(index); await scrub(.75); assert.equal(await current(), String(index).padStart(2, '0'));
@@ -79,6 +90,10 @@ try {
     if ([1, 6, 8, 10, 15, 17].includes(index)) { await scrub(1); await shot(`arm-${index}`); }
   }
   for(const landing of [4,8,13,17]){await seek(landing);await scrub(.75);await shot(`landing-${landing}`);}
+  for(const index of [7,16])for(const camera of ['Lateral','Topo']){
+    await seek(index);await page.getByRole('button',{name:camera,exact:true}).click();
+    for(const t of [.22,.40,.52,.66,.80,.96]){await scrub(t);await shot(`lateral-${index}-${camera}-${t}`);}
+  }
   await seek(7); await scrub(.65);
   let image = await surface.screenshot();
   for (const name of ['Frente', 'Lateral', 'Costas', 'Topo', 'Restaurar câmera']) {
@@ -117,6 +132,14 @@ try {
       const r = await button.boundingBox(); assert.ok(r.x >= 0 && r.y >= 0 && r.x + r.width <= width + 1 && r.y + r.height <= height + 1, `${width}: control stays inside viewport`);
     }
     await shot(`viewport-${width}`);
+    await page.getByRole('button',{name:'Aprender',exact:true}).click();
+    // Timeline may be collapsed in a narrow viewport; seek with its native navigation control.
+    await page.getByRole('button',{name:'Próximo movimento',exact:true}).click();
+    await page.locator('.preparation').waitFor();await page.clock.runFor(1000);
+    assert.equal(await page.getByRole('button',{name:'Demonstrar',exact:false}).count(),1);
+    await shot(`preparation-${width}`);
+    await page.locator('.preparation summary').click();await shot(`preparation-folded-${width}`);
+    await page.getByRole('button',{name:'Revisar',exact:true}).click();
   }
   await page.setViewportSize({ width: 390, height: 844 });
   if(await page.getByRole('button',{name:'Expandir timeline',exact:false}).count())await page.getByRole('button',{name:'Expandir timeline',exact:false}).click();
