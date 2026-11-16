@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { SVGRenderer, SVGObject } from 'three/addons/renderers/SVGRenderer.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { add, rotate, sample, solveIK, upperPoint, type V3 } from './motion.ts';
+import { add, rotate, sample, solveIK, upperPoint, footCenter, plantarCenter, type V3 } from './motion.ts';
 import { duration, type Player } from './player.ts';
 import { lesson, type Side } from './lesson.ts';
 export type CameraView='Livre'|'Frente'|'Lateral'|'Costas'|'Topo';
@@ -16,13 +16,14 @@ export function createStage(host:HTMLDivElement,getPlayer:()=>Player,onError:(me
  const ambient=compatible?new THREE.AmbientLight(0xffffff,.65):new THREE.HemisphereLight(0xffffff,0x617266,2.2);scene.add(ambient);
  const light=new THREE.DirectionalLight(0xfff7e9,compatible?.45:2.6);light.position.set(-3,7,4);light.castShadow=true;light.shadow.mapSize.set(1024,1024);Object.assign(light.shadow.camera,{left:-5,right:5,top:5,bottom:-5});light.shadow.normalBias=.025;scene.add(light);
  const surface=(color:string,roughness:number)=>compatible?new THREE.MeshLambertMaterial({color}):new THREE.MeshStandardMaterial({color,roughness});
- const materials={body:surface('#dce1d5',.73),joint:surface('#607767',.65),active:surface('#bdd9a4',.65),belt:surface('#334d40',1),mat:compatible?new THREE.MeshBasicMaterial({color:'#414f46'}):new THREE.MeshStandardMaterial({color:'#414f46',roughness:1}),mark:new THREE.MeshBasicMaterial({color:'#b0c39d',transparent:true,opacity:.42})};
+ const materials={body:surface('#dce1d5',.73),joint:surface('#607767',.65),active:surface('#bdd9a4',.65),support:surface('#85cbd1',.65),belt:surface('#334d40',1),mat:compatible?new THREE.MeshBasicMaterial({color:'#414f46'}):new THREE.MeshStandardMaterial({color:'#414f46',roughness:1}),mark:new THREE.MeshBasicMaterial({color:'#b0c39d',transparent:true,opacity:.42})};
  const geo={sphere:new THREE.SphereGeometry(1,compatible?10:16,compatible?8:12),segment:new THREE.CylinderGeometry(1,1,1,12),box:new THREE.BoxGeometry(1,1,1)};
  const mesh=(g:THREE.BufferGeometry,mat:THREE.Material)=>{const m=new THREE.Mesh(g,mat);m.castShadow=true;m.receiveShadow=true;scene.add(m);return m;};
  const mat=mesh(geo.box,materials.mat);mat.position.y=-.055;mat.scale.set(4.3,.1,6.6);mat.renderOrder=-100;
  const grid=new THREE.GridHelper(6,12,0xb8c2b3,0xc7cfbf);(grid.material as THREE.LineBasicMaterial).color.set('#73876b');(grid.material as THREE.LineBasicMaterial).opacity=.45;(grid.material as THREE.LineBasicMaterial).transparent=true;grid.position.y=.006;grid.renderOrder=-90;scene.add(grid);
  const path=new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,.012,-3),new THREE.Vector3(0,.012,3)]),new THREE.LineDashedMaterial({color:0x9db38b,dashSize:.07,gapSize:.09}));path.renderOrder=-80;path.computeLineDistances();scene.add(path);
  const arrow=new THREE.ArrowHelper(new THREE.Vector3(0,0,1),new THREE.Vector3(0,.04,0),.7,0xc1dca6,.16,.12);scene.add(arrow);
+ const supportArrow=new THREE.ArrowHelper(new THREE.Vector3(0,0,1),new THREE.Vector3(),.4,0x85cbd1,.12,.10);scene.add(supportArrow);
  const labelTextures:THREE.Texture[]=[];
  for(const [text,z] of [['LESTE',3.0],['OESTE',-3.0]] as [string,number][]){
   const canvas=document.createElement('canvas');canvas.width=256;canvas.height=64;const ctx=canvas.getContext('2d')!;ctx.fillStyle='#afc29b';ctx.font='500 30px sans-serif';ctx.textAlign='center';ctx.fillText(text,128,42);
@@ -48,15 +49,18 @@ export function createStage(host:HTMLDivElement,getPlayer:()=>Player,onError:(me
    const movement=lesson.movements[state.index],kick=movement.technique.includes('Kick');
    for(const limb of ['upperArm','forearm','hand','thigh','shin','foot'])parts[side+limb].material=side===movement.side&&(kick?['thigh','shin','foot'].includes(limb):['upperArm','forearm','hand'].includes(limb))?materials.active:materials.body;
    const sign=side==='L'?-1:1,shoulder=at([sign*.27,.5,0]),hip=at([sign*.14,0,0],p.yaw),ankle=p.feet[side].position;
-   const leg=solveIK(hip,ankle,rotate([0,0,1],kick&&side!==movement.side?p.feet[side].yaw:p.yaw),.44,.44);
-   const handTarget=at(p.hands[side]);const arm=solveIK(shoulder,handTarget,rotate([sign*.7,-.4,-.6],bodyYaw),.31,.30);
+   const leg=solveIK(hip,ankle,p.kneePoles?.[side]??rotate([0,0,1],kick&&side!==movement.side?p.feet[side].yaw:p.yaw),...movement.plan.constraints.leg);
+   const handTarget=at(p.hands[side]);const arm=solveIK(shoulder,handTarget,rotate([sign*.7,-.4,-.6],bodyYaw),...movement.plan.constraints.arm);
    for(const [name,pos,r] of [['shoulder',shoulder,.085],['elbow',arm.joint,.08],['wrist',arm.end,.06],['hip',hip,.085],['knee',leg.joint,.10],['ankle',leg.end,.075]] as [string,V3,number][])set(side+name,pos,[r,r,r]);
    link(side+'upperArm',shoulder,arm.joint,.073);link(side+'forearm',arm.joint,arm.end,.057);link(side+'thigh',hip,leg.joint,.09);link(side+'shin',leg.joint,leg.end,.065);
    const hand=parts[side+'hand'];hand.position.set(...arm.end);hand.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),new THREE.Vector3(...arm.end).sub(new THREE.Vector3(...arm.joint)).normalize());hand.rotateY(p.open[side]*Math.PI/2);hand.scale.set(.105,.12+p.open[side]*.08,.095-p.open[side]*.055);
-   const f=p.feet[side],footPos=add(leg.end,rotate([0,-.037*Math.cos(f.pitch)-.065*Math.sin(f.pitch),-.037*Math.sin(f.pitch)+.065*Math.cos(f.pitch)],f.yaw));set(side+'foot',footPos,[.14,.10,.29],f.yaw);parts[side+'foot'].rotateX(f.pitch);
-   set(side+'marker',[f.position[0],.016,f.position[2]],[.19,.012,.34],f.yaw);parts[side+'marker'].renderOrder=-60;parts[side+'marker'].visible=f.position[1]<.12;
+   const f=p.feet[side],footPos=footCenter({...f,position:leg.end});set(side+'foot',footPos,[.14,.10,.29],f.yaw);parts[side+'foot'].rotateX(f.pitch);
+   if(kick&&movement.plan.roles.supportFoot===side)parts[side+'foot'].material=materials.support;
+   const plant=plantarCenter(f);set(side+'marker',[plant[0],.016,plant[2]],[.19,.012,.34],f.yaw);parts[side+'marker'].renderOrder=-60;parts[side+'marker'].visible=plant[1]<.02;
+
   }
   arrow.position.set(p.root[0]+.6,.04,p.root[2]);arrow.setDirection(new THREE.Vector3(0,0,lesson.movements[state.index].direction==='Leste'?1:-1));
+  const support=lesson.movements[state.index].plan.roles.supportFoot;supportArrow.visible=support!=='both';if(support!=='both'){const f=p.feet[support],plant=plantarCenter(f);supportArrow.position.set(plant[0],.035,plant[2]);supportArrow.setDirection(new THREE.Vector3(...rotate([0,0,1],f.yaw)));}
   controls.update();renderer.render(scene,camera);
  }
  let frame=0,disposed=false,last=0;
