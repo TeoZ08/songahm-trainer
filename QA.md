@@ -23,3 +23,8 @@ A planta do apoio permanece fixa do instante 0,28 ao 0,80. A extensão do tornoz
 Fonte ATA novamente conferida: #7 direito, #16 esquerdo, aterrissagens em 8/17. Quadros privados já disponíveis do vídeo de Schafer (22–25 s) revistos: fechamento, mudança de orientação do apoio, inclinação, recolhimento e retorno sustentam a comparação qualitativa. A vista posterior oculta joelho/tornozelo em parte; não permite recuperar valores exatos. Pelve/tórax acoplados e timings são keyframes aproximados, pendentes de revisão marcial. Sem redistribuir quadros/vídeo.
 
 Limites: sem avaliação de instrutor ou iPhone físico; retorno Bah Ro não animado. Aviso de bundle >500 kB permanece. A instalação informa sete avisos moderados na cadeia de ferramentas de lint (não no runtime); não foram feitas atualizações de dependências fora desta revisão.
+
+### Ajuste de trajetória — chute frontal (03/12)
+- Feedback visual do aluno: a fase de extensão deve preservar a posição do joelho, e a canela deve descrever o arco do pé em torno dessa articulação. O frontal não pivota o pé de apoio.
+- O motor agora levanta primeiro o joelho; em seguida, move o tornozelo por arco esférico com raio igual ao comprimento da canela, relativo ao joelho da câmara. O calcanhar do chute lateral foi orientado acima da ponta, sem alterar o pivô de apoio existente.
+- Medição do simulador: deslocamento do joelho ~2 mm entre a câmara e a extensão máxima (antes ~34 cm); ambos os lados. 24 testes unitários passaram, assim como build/lint, Chrome WebGL e Firefox SVG (18 movimentos e telas desktop/mobile). Essas verificações são de software, não certificação de execução marcial.

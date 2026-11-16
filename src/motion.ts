@@ -6,6 +6,19 @@ export interface Pose {root:V3;yaw:number;twist:number;lean:V3;feet:Record<Side,
 export const mix=(a:number,b:number,t:number)=>a+(b-a)*t;
 export const smooth=(t:number)=>{t=Math.max(0,Math.min(1,t));return t*t*(3-2*t);};
 export const lerp=(a:V3,b:V3,t:number):V3=>a.map((v,i)=>mix(v,b[i],t)) as V3;
+/** Smooth curved ankle trajectory between explicit technique poses. */
+const quadratic=(a:V3,control:V3,b:V3,t:number):V3=>{
+ const u=1-t;return a.map((v,i)=>u*u*v+2*u*t*control[i]+t*t*b[i]) as V3;
+};
+/** Rotate the shin direction on the sphere around a nearly fixed knee. */
+const sphereArc=(start:V3,end:V3,t:number,length:number):V3=>{
+ const na=Math.hypot(...start),nb=Math.hypot(...end);
+ const a=start.map(v=>v/na) as V3,b=end.map(v=>v/nb) as V3;
+ const dot=Math.max(-1,Math.min(1,a.reduce((s,v,i)=>s+v*b[i],0))),angle=Math.acos(dot);
+ const wa=angle<1e-5?1-t:Math.sin((1-t)*angle)/Math.sin(angle);
+ const wb=angle<1e-5?t:Math.sin(t*angle)/Math.sin(angle);
+ return a.map((v,i)=>(v*wa+b[i]*wb)*length) as V3;
+};
 export function rotate(v:V3,y:number):V3{return [v[0]*Math.cos(y)+v[2]*Math.sin(y),v[1],-v[0]*Math.sin(y)+v[2]*Math.cos(y)];}
 export const add=(a:V3,b:V3):V3=>a.map((v,i)=>v+b[i]) as V3;
 const sub=(a:V3,b:V3):V3=>a.map((v,i)=>v-b[i]) as V3;
@@ -88,7 +101,23 @@ export function sample(index:number,progress:number):Pose{
  if(motion.kind==='front'){
   const side=m.side,sign=side==='L'?-1:1,other=opposite(side),chamber=add(b.root,rotate(motion.chamber,b.yaw)),extension=add(b.root,rotate(motion.extension,b.yaw));
   const c=motion.chamberEnd,e=motion.extensionEnd,r=motion.retractionEnd;
-  p.feet[side].position=t<c?lerp(a.feet[side].position,chamber,smooth(t/c)):t<e?lerp(chamber,extension,smooth((t-c)/(e-c))):lerp(extension,chamber,smooth((t-e)/(r-e)));
+  // Lift low and forward first, then bring the ankle up into a stable chamber.
+  const liftControl:V3=[
+   mix(a.feet[side].position[0],chamber[0],.55),
+   a.feet[side].position[1]+motion.arc.liftHeight,
+   mix(a.feet[side].position[2],chamber[2],motion.arc.liftForward),
+  ];
+  // Resolve the knee only once at the chamber pose. Through the kick the
+  // shin stays a constant-length radius around that pivot, instead of moving
+  // the knee together with a linearly interpolated ankle target.
+  const plan=m.plan,knee=solveIK(hipPoint(b,side),chamber,rotate([0,0,1],b.yaw),...plan.constraints.leg).joint;
+  const shinStart=sub(chamber,knee),shinEnd=sub(extension,knee),shinLength=plan.constraints.leg[1];
+  const aroundKnee=(from:V3,to:V3,u:number):V3=>add(knee,sphereArc(from,to,smooth(u),shinLength));
+  p.feet[side].position=t<c
+   ?quadratic(a.feet[side].position,liftControl,chamber,smooth(t/c))
+   :t<e
+    ?aroundKnee(shinStart,shinEnd,(t-c)/(e-c))
+    :aroundKnee(shinEnd,shinStart,(t-e)/(r-e));
   p.feet[side].pitch=t<c?mix(a.feet[side].pitch,motion.pitch.chamber,smooth(t/c)):t<e?mix(motion.pitch.chamber,motion.pitch.strike,smooth((t-c)/(e-c))):mix(motion.pitch.strike,motion.pitch.chamber,smooth((t-e)/(r-e)));
   const body=motion.body,pulse=smooth((t-body.onset)/(body.loaded-body.onset))*(1-smooth((t-body.release)/(body.end-body.release)));
   p.root=add(p.root,rotate(body.translation.map(v=>v*pulse) as V3,b.yaw));p.yaw+=body.pelvis*pulse;p.twist=body.thorax*pulse;p.lean=body.lean.map(v=>v*pulse) as V3;p.feet[other].yaw+=body.pivot*pulse;

@@ -25,6 +25,8 @@ export interface ArmMotion {
 export interface FrontMotion {
   kind:'front'; phases:Phase[]; transferEnd:number; chamberEnd:number; extensionEnd:number; retractionEnd:number;
   chamber:V3; extension:V3; pitch:{chamber:number; strike:number};
+  /** Knee lifts into a stable chamber; the ankle then revolves about that joint. */
+  arc:{liftForward:number;liftHeight:number};
   body:{onset:number; loaded:number; release:number; end:number; pelvis:number; thorax:number; lean:V3; translation:V3; pivot:number};
 }
 export interface SideMotion {kind:'side'; phases:SideKey[]; closing:number; width:number;}
@@ -60,9 +62,11 @@ function sideMotion(sign:number):SideMotion {
     key(.22,'Fechar a distância','active',.84,0,0,1,0,'initial',[0,0,0],[0,0,1],0,'initial','both'),
     key(.28,'Assumir o apoio','support',.88,0,0,1,0,'initial',[0,0,0],[0,0,1],0,'initial','both'),
     key(.40,'Câmara e giro conjunto','support',.88,.55,.12,1,.4,'hip',chamber,knee,-.65,'pelvis','support'),
-    key(.52,'Pivô do apoio','support',.90,.30,.25,1,1,'hip',[sign*.18,-.03,.12],knee,-.85,'target','support'),
-    key(.64,'Extensão lateral','support',.92,0,.40,1,1,'hip',[sign*.86,.07,0],[sign*.8,.3,.2],-1.15,'target','support'),
-    key(.68,'Extensão máxima','support',.92,0,.40,1,1,'hip',[sign*.86,.07,0],[sign*.8,.3,.2],-1.15,'target','support'),
+    key(.52,'Pivô do apoio','support',.90,.30,.25,1,1,'hip',[sign*.18,-.03,.12],knee,-.18,'target','support'),
+    // Turn the striking foot around its ankle: heel higher than the toes.
+    // The body turn and planted-foot pivot of the lateral kick remain intact.
+    key(.64,'Extensão lateral','support',.92,0,.40,1,1,'hip',[sign*.86,.07,0],[sign*.8,.3,.2],.44,'target','support'),
+    key(.68,'Extensão máxima','support',.92,0,.40,1,1,'hip',[sign*.86,.07,0],[sign*.8,.3,.2],.44,'target','support'),
     key(.80,'Recolher à câmara','support',.88,.25,.16,1,1,'hip',chamber,knee,-.65,'pelvis','support'),
     key(.91,'Apoio na entrada da próxima técnica','landing',.76,0,0,1,0,'landing',[0,0,0],[0,0,1],0,'stance','both'),
     key(1,'Reconstruir a base','stance',.86,0,0,1,0,'landing',[0,0,0],[0,0,1],0,'stance','both'),
@@ -77,10 +81,14 @@ export function createPlan(m:MovementIdentity):MovementPlan {
   let motion:MovementPlan['motion'];
   if(m.technique==='sideKick')motion=sideMotion(sign);
   else if(m.technique==='frontKick')motion={
-    kind:'front',transferEnd:.32,chamberEnd:.32,extensionEnd:.58,retractionEnd:.82,
-    chamber:[sign*.18,0,.18],extension:[sign*.18,.08,.85],pitch:{chamber:-.65,strike:-.70},
-    body:{onset:.18,loaded:.48,release:.68,end:.98,pelvis:sign*.06,thorax:-sign*.08,lean:[-.14,0,0],translation:[0,.015,-.015],pivot:sign*.12},
-    phases:[phase(0,'Transferência de peso'),phase(.32,'Extensão frontal'),phase(.58,'Recolhimento'),phase(.82,'Preparar o apoio da próxima técnica'),phase(1,'Câmara final')],
+    kind:'front',transferEnd:.32,chamberEnd:.36,extensionEnd:.64,retractionEnd:.86,
+    // Knee loads first; ankle travels a rising forward arc, not the lateral trajectory.
+    // The chamber places the knee forward and leaves the lower leg nearly vertical.
+    chamber:[sign*.18,-.43,.45],extension:[sign*.18,-.11,.77],pitch:{chamber:-.38,strike:-.28},
+    arc:{liftForward:.67,liftHeight:.035},
+    // A front kick has no support-foot pivot.
+    body:{onset:.18,loaded:.48,release:.70,end:.98,pelvis:0,thorax:-sign*.07,lean:[-.12,0,0],translation:[0,0,0],pivot:0},
+    phases:[phase(0,'Transferir o peso'),phase(.16,'Elevar o joelho'),phase(.36,'Preparar o chute frontal'),phase(.49,'Estender em arco para a frente'),phase(.64,'Recolher a perna'),phase(.86,'Manter a câmara'),phase(1,'Câmara final')],
   };
   else {
     const finish:Record<Exclude<Technique,'frontKick'|'sideKick'>,V3>={high:[sign*.10,.98,.18],punch:[sign*.22,m.height==='Alta'?.68:.30,.56],low:[sign*.34,-.18,.35],inner:[sign*.50,.70,.13],knife:[sign*.855,.37,.08]};
