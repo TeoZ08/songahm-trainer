@@ -33,7 +33,7 @@ function endpoints(){
    // Endpoint is a rechambered kick, not a fictitious extra numbered landing.
   }else{
    p.yaw=dir===1?0:Math.PI;
-   if(![2,11].includes(m.id)){
+   if(m.step!=='hold'){
     const support=p.feet[other].position;
     p.feet[side]=foot((side==='L'?-.2:.2)*dir,support[2]+dir*.55,p.yaw);
    }
@@ -47,10 +47,10 @@ function endpoints(){
    const a=p.feet.L.position,b=p.feet.R.position;p.root=[(a[0]+b[0])/2,.86,(a[2]+b[2])/2];
   }
   const sign=side==='L'?-1:1;
-  if(m.technique==='high')p.hands[side]=[sign*.10,.77,.18];
-  if(m.technique==='punch'){p.hands[side]=[sign*.22,m.height==='Alta'?.48:.22,.67];p.twist=sign*.09;}
+  if(m.technique==='high')p.hands[side]=[sign*.10,.98,.18];
+  if(m.technique==='punch'){p.hands[side]=[sign*.22,m.height==='Alta'?.68:.22,.53];p.twist=sign*.09;}
   if(m.technique==='low')p.hands[side]=[sign*.34,-.18,.35];
-  if(m.technique==='inner')p.hands[side]=[sign*.62,.44,.14];
+  if(m.technique==='inner')p.hands[side]=[sign*.50,.70,.13];
   if(m.technique==='knife'){p.hands[side]=[sign*.68,.24,.12];p.open[side]=1;}
   if(['frontKick','sideKick'].includes(m.technique))p.hands={L:[-.31,.34,.32],R:[.31,.34,.32]};
   poses.push(p);
@@ -67,18 +67,22 @@ export function sample(index:number,progress:number):Pose{
  index=Math.max(0,Math.min(targets.length-1,index));const t=Math.max(0,Math.min(1,progress));
  const a=index===0?ready:targets[index-1],b=targets[index],m=lesson.movements[index];
  if(t===0)return copy(a);if(t===1)return copy(b);
- const move=smooth(t/.72),p=blend(a,b,move);
+ const isKick=m.technique==='frontKick'||m.technique==='sideKick';
+ const move=smooth(t/(isKick?.32:.72)),p=blend(a,b,move);
  for(const s of ['L','R'] as Side[]){
   const dist=Math.hypot(...a.feet[s].position.map((v,i)=>v-b.feet[s].position[i]));
   if(dist>.03&&a.feet[s].position[1]<.11&&b.feet[s].position[1]<.11)p.feet[s].position[1]+=.13*Math.sin(Math.PI*move);
  }
  if(m.technique==='frontKick'||m.technique==='sideKick'){
   const side=m.side,sign=side==='L'?-1:1;
+  const kt=m.technique==='sideKick'?Math.max(0,(t-.18)/.82):t;
+  if(m.technique==='sideKick'){const other=side==='L'?'R':'L',step=smooth(t/.18);p.feet[other].position=lerp(a.feet[other].position,b.feet[other].position,step);p.feet[other].position[1]+=.09*Math.sin(Math.PI*step);}
   const chamber=add(b.root,rotate([sign*.18,0,.18],b.yaw));
-  const extension=add(b.root,rotate(m.technique==='frontKick'?[sign*.18,.12,.79]:[sign*.79,.12,.04],b.yaw));
+  const extension=add(b.root,rotate(m.technique==='frontKick'?[sign*.18,.08,.86]:[sign*.99,.12,.04],b.yaw));
   const start=a.feet[side].position;
-  p.feet[side].position=t<.32?lerp(start,chamber,smooth(t/.32)):t<.58?lerp(chamber,extension,smooth((t-.32)/.26)):lerp(extension,chamber,smooth((t-.58)/.24));
-  p.feet[side].pitch=t<.58?mix(-.65,0,smooth((t-.32)/.26)):mix(0,-.65,smooth((t-.58)/.24));
+  p.feet[side].position=kt<.32?lerp(start,chamber,smooth(kt/.32)):kt<.58?lerp(chamber,extension,smooth((kt-.32)/.26)):lerp(extension,chamber,smooth((kt-.58)/.24));
+  if(m.technique==='sideKick'){const outward=kt<.58?smooth((kt-.32)/.26):1-smooth((kt-.58)/.24);p.feet[side].yaw+=sign*Math.PI/2*outward;}
+  p.feet[side].pitch=kt<.32?mix(a.feet[side].pitch,-.65,smooth(kt/.32)):kt<.58?mix(-.65,0,smooth((kt-.32)/.26)):mix(0,-.65,smooth((kt-.58)/.24));
  }else{
   // A distinct preparation then delivery gives each technique a readable rhythm.
   const chamber:V3=[m.side==='L'?-.17:.17,.28,.28];

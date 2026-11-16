@@ -12,7 +12,7 @@ npm test
 npm run test:browser
 ```
 
-Node 22.18+ (testes TypeScript nativos) ou Node 24. Navegador com WebGL 2. O teste de navegador usa Playwright e um Firefox instalado por ele (`npx playwright install firefox`, se necessário). O app não depende do Blender. React + Vite + TypeScript + Three.js direto: dispensa wrappers e biblioteca de estado; OrbitControls vem do próprio Three.js.
+Node 22.18+ (testes TypeScript nativos) ou Node 24. Navegador moderno; WebGL 2 preferido, com renderização SVG de compatibilidade quando indisponível. O teste de navegador usa Playwright e Firefox instalado pelo Playwright (`npx playwright install firefox`, se ausente). Para testar WebGL no Chrome: `BROWSER=chromium npm run test:browser` (`CHROME_PATH` altera o executável). O app não depende do Blender. React + Vite + TypeScript + Three.js direto: dispensa wrappers e biblioteca de estado; OrbitControls e SVGRenderer vêm do próprio Three.js. O modo SVG conserva geometria e órbita 3D, com materiais simplificados, sem sombras e atualização limitada a 20 fps.
 
 - **Aprender:** explicação, velocidade inicial 0,5×, um movimento por vez.
 - **Praticar:** demonstração com pausa entre técnicas; Continuar avança quando você desejar.
@@ -30,3 +30,9 @@ Consultadas em 16/11/2026, páginas 1–2, movimentos 1–18:
 Cada movimento remete ao seu número nas duas fontes. As instruções em português são sínteses próprias; não redistribuímos PDFs, imagens ou vídeos. **A animação é uma aproximação, sem revisão marcial**: ângulos, preparação, rotação dos punhos, pivôs, passada #3, distribuição do peso, distâncias e tempos permanecem pendentes. Retorno Bah Ro descrito nas fontes ainda não é animado, e não constitui um 19º movimento. O 3D apoia a memorização; confirme a execução com um instrutor. Sem afiliação, certificação ou endosso da ATA.
 
 Os testes verificam software e invariantes geométricos, não correção marcial. Viewport móvel simulado não comprova funcionamento em iPhone físico.
+
+## Git e validação neste ambiente
+
+O diretório `.git` original está montado somente para leitura: `git add` falha ao criar `index.lock`. Os commits foram preservados em **`.git-local`**, dentro desta pasta. Para consultá-los: `git --git-dir=.git-local --work-tree=. log --oneline`. Não houve push ou deploy. A integração desse histórico ao `.git` original exige uma sessão com escrita nesse diretório.
+
+Neste ambiente também não é permitido abrir a porta 5173. O teste de navegador carrega o bundle de produção via interceptação HTTP local do Playwright, sem servidor nem publicação. Firefox executou o modo 3D SVG real; Chrome falhou por restrição de sockets e o caminho WebGL não foi validado visualmente. Capturas em `artifacts/` (ignoradas pelo Git). Validação em iPhone físico e revisão marcial continuam pendentes.

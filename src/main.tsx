@@ -1,15 +1,15 @@
 import React, { useEffect, useReducer, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { lesson, sideName, sources } from './lesson.ts';
-import { duration, initial, update, type Mode } from './player.ts';
+import { duration, initial, update, type Action, type Mode } from './player.ts';
 import { createStage, type CameraView } from './stage.ts';
 import './style.css';
 function App(){
- const [player,dispatch]=useReducer(update,initial),[view,setView]=useState<CameraView>('Livre'),[error,setError]=useState(''),[showSources,setShowSources]=useState(false);
+ const [player,dispatch]=useReducer((s:typeof initial,a:Action)=>update(s,a),initial),[view,setView]=useState<CameraView>('Livre'),[compatible,setCompatible]=useState(false),[error,setError]=useState(''),[showSources,setShowSources]=useState(false);
  const host=useRef<HTMLDivElement>(null),live=useRef(player),stage=useRef<ReturnType<typeof createStage>|null>(null);live.current=player;
  const m=lesson.movements[player.index];
  useEffect(()=>{let frame=0,last=0;const tick=(now:number)=>{if(last)dispatch({type:'tick',delta:Math.min((now-last)/1000,.1)});last=now;frame=requestAnimationFrame(tick);};frame=requestAnimationFrame(tick);return()=>cancelAnimationFrame(frame);},[]);
- useEffect(()=>{if(!host.current)return;try{stage.current=createStage(host.current,()=>live.current,setError);}catch{setError('Não foi possível iniciar o 3D neste navegador. Ative WebGL ou tente outro navegador. As instruções e controles continuam disponíveis.');}return()=>stage.current?.dispose();},[]);
+ useEffect(()=>{if(!host.current)return;try{stage.current=createStage(host.current,()=>live.current,setError);setCompatible(stage.current.compatible);}catch{setError('Não foi possível iniciar o 3D neste navegador. Ative WebGL ou tente outro navegador. As instruções e controles continuam disponíveis.');}return()=>stage.current?.dispose();},[]);
  useEffect(()=>{const handler=(e:KeyboardEvent)=>{if(e.target instanceof HTMLElement&&['INPUT','SELECT','TEXTAREA','BUTTON','A'].includes(e.target.tagName))return;if(e.code==='Space'){e.preventDefault();dispatch({type:'toggle'});}if(e.code==='ArrowRight'){e.preventDefault();dispatch({type:'seek',index:live.current.index+1});}if(e.code==='ArrowLeft'){e.preventDefault();dispatch({type:'seek',index:live.current.index-1});}};window.addEventListener('keydown',handler);return()=>window.removeEventListener('keydown',handler);},[]);
  function camera(v:CameraView){setView(v);stage.current?.preset(v);}
  const status=player.finished?'Aula concluída':player.playing?'Demonstrando':player.time>=duration?'Movimento concluído':player.time>0?'Pausado':'Pronto para começar';
@@ -20,7 +20,7 @@ function App(){
  <div className="intro"><div><p className="eyebrow">TAEKWONDO · FAIXA BRANCA</p><h1>Um movimento de cada vez.</h1><p className="subtitle">Observe, repita e encontre o seu ritmo.</p></div><div className="lesson-label"><span>01</span><div><strong>Songahm 1</strong><small>18 movimentos · aula guiada</small></div></div></div>
  <nav className="modes" aria-label="Modo de treino">{(['Aprender','Praticar','Revisar'] as Mode[]).map((mode,i)=><button key={mode} aria-pressed={player.mode===mode} onClick={()=>dispatch({type:'mode',mode})}><span>0{i+1}</span>{mode}</button>)}<p>{modes[player.mode]}</p></nav>
  <section className="classroom" aria-label="Aula Songahm 1">
- <div className="stage-wrap"><div className="stage-top"><span><i className={player.playing?'live-dot playing':'live-dot'}/>{status}</span><span>INSTRUTOR 3D</span></div><div className="stage" ref={host}/>{error&&<div className="stage-error" role="alert">{error}</div>}
+ <div className="stage-wrap"><div className="stage-top"><span><i className={player.playing?'live-dot playing':'live-dot'}/>{status}</span><span>{compatible?'3D COMPATÍVEL · SEM SOMBRAS':'INSTRUTOR 3D'}</span></div><div className="stage" ref={host}/>{error&&<div className="stage-error" role="alert">{error}</div>}
  <span className="drag-hint">Arraste para orbitar · pinça para zoom</span>
  <div className="camera-bar" aria-label="Câmera">{(['Livre','Frente','Lateral','Costas','Topo'] as CameraView[]).map(v=><button key={v} aria-pressed={view===v} onClick={()=>camera(v)}>{v}</button>)}<button onClick={()=>camera('Livre')} aria-label="Restaurar câmera">↺</button></div></div>
  <aside className="instruction"><div className="step-header"><span className="eyebrow">MOVIMENTO</span><span><b>{String(m.id).padStart(2,'0')}</b> / 18</span></div><div aria-live="polite" aria-atomic="true"><h2>{m.title}</h2><p className="side"><span className="side-dot"/>Lado {sideName(m.side).toLowerCase()} · altura {m.height.toLowerCase()}</p><dl><div><dt>Base</dt><dd>{m.stance}</dd></div><div><dt>Direção da técnica</dt><dd>{m.direction}</dd></div><div><dt>Passo e giro</dt><dd>{m.turn}</dd></div></dl><div className="attention"><p className="eyebrow">OBSERVE</p><p>{m.note}</p></div></div>
