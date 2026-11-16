@@ -12,6 +12,6 @@ Three.js lê tokens CSS para ambiente, tatame, grid, luz e materiais. Boneco cla
 
 Spacing 4/8/12/16/24/32/48; raios 8/12/16. Painéis opacos, borda neutra fina e sombra leve. Tipografia do sistema, títulos esportivos moderados e números tabulares. Ícones SVG próprios de traço uniforme, nunca sem nome acessível.
 
-Mobile: safe areas, 100dvh, alvos ≥44 px, seletor de 16 px, órbita/pinça no palco e scroll horizontal nativo da timeline. Hover só em ponteiro fino; foco contrastante; feedback curto sem animação ornamental. Aprender sempre espera Demonstrar. Praticar/Revisar mantêm os fluxos existentes. Sem login, gamificação ou dados pessoais.
+Mobile: safe areas via tokens de env(), cabeçalho medido em resize/visualViewport, timeline compacta ao girar a tela, 100dvh, alvos ≥44 px, seletor de 16 px, órbita/pinça no palco e scroll horizontal nativo da timeline. Hover só em ponteiro fino; foco contrastante; feedback curto sem animação ornamental. Aprender sempre espera Demonstrar. Praticar/Revisar mantêm os fluxos existentes. Sem login, gamificação ou dados pessoais.
 
 Logo: `public/brand/master-240.png`/`master-480.png`; origem e medidas em `brand-reference/README.md`. Independência institucional explicitada no modal. Validação em iPhone físico e revisão marcial continuam externas.

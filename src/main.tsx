@@ -58,6 +58,7 @@ function App() {
     const adapt=()=>{
       const bounds=root.getBoundingClientRect();
       const header=root.querySelector('.topbar')?.getBoundingClientRect();
+      root.style.setProperty('--header-bottom',`${header?header.bottom-bounds.top:0}px`);
       const movement=root.querySelector('.movement-hud')?.getBoundingClientRect();
       const controls=root.querySelector('.timeline')?.getBoundingClientRect();
       const top=hud?Math.max(header?.bottom??0,bounds.width<640?movement?.bottom??0:0)-bounds.top+12:0;
@@ -67,7 +68,8 @@ function App() {
     };
     const resize=new ResizeObserver(adapt);resize.observe(root);
     for(const element of root.querySelectorAll('.topbar,.movement-hud,.timeline'))resize.observe(element);
-    adapt();return()=>resize.disconnect();
+    window.addEventListener('resize',adapt);window.visualViewport?.addEventListener('resize',adapt);
+    adapt();return()=>{resize.disconnect();window.removeEventListener('resize',adapt);window.visualViewport?.removeEventListener('resize',adapt);};
   },[hud,timeline]);
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -88,9 +90,15 @@ function App() {
   useEffect(()=>{const compact=matchMedia('(max-width: 640px), (max-height: 600px)');const adapt=()=>{if(compact.matches)setCameraTools(false);};compact.addEventListener('change',adapt);return()=>compact.removeEventListener('change',adapt);},[]);
   useEffect(() => {
     const shortViewport=matchMedia('(max-height: 600px), (max-width: 640px)');
-    const adapt=()=>{if(shortViewport.matches)setTimeline(false);};
-    adapt();shortViewport.addEventListener('change',adapt);
-    return()=>shortViewport.removeEventListener('change',adapt);
+    let compact=shortViewport.matches,landscape=innerWidth>innerHeight;
+    if(compact)setTimeline(false);
+    const adapt=()=>{
+      const nextCompact=shortViewport.matches,nextLandscape=innerWidth>innerHeight;
+      if(nextCompact&&(!compact||nextLandscape!==landscape))setTimeline(false);
+      compact=nextCompact;landscape=nextLandscape;
+    };
+    shortViewport.addEventListener('change',adapt);window.addEventListener('resize',adapt);
+    return()=>{shortViewport.removeEventListener('change',adapt);window.removeEventListener('resize',adapt);};
   }, []);
   useEffect(() => {
     list.current?.querySelector('[aria-current="step"]')?.scrollIntoView({ block: 'nearest', inline: 'center' });

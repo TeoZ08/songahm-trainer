@@ -180,11 +180,29 @@ try {
     await touchPage.getByRole('button',{name:'Instruções',exact:true}).tap();await touchPage.getByRole('button',{name:'Fechar instruções'}).tap();
     await touchPage.screenshot({path:`${folder}/touch-pinch.png`});await touchPage.close();
   }
+  // Simulate CSS safe-area inputs, not a claim of testing physical iPhone OS chrome.
+  for(const {width,height,top,right,bottom,left} of [
+    {width:390,height:844,top:44,right:0,bottom:34,left:0},
+    {width:844,height:390,top:0,right:44,bottom:21,left:44},
+  ]){
+    await page.setViewportSize({width,height});
+    await page.evaluate(insets=>{for(const edge of ['top','right','bottom','left'])document.documentElement.style.setProperty(`--safe-${edge}`,`${insets[edge]}px`);window.dispatchEvent(new Event('resize'));},{top,right,bottom,left});
+    await page.clock.runFor(150);
+    for(const button of await page.locator('.topbar button,.transport button,.camera-bar button').all()){
+      if(!await button.isVisible())continue;
+      const r=await button.boundingBox();assert.ok(r.x>=left-1&&r.y>=top-1&&r.x+r.width<=width-right+1&&r.y+r.height<=height-bottom+1,'Controls respect simulated safe areas');
+    }
+    if(height<600)assert.equal(await page.locator('.timeline').getAttribute('data-collapsed'),'true','Rotation restores compact timeline');
+    const safeHeader=await page.locator('.topbar').boundingBox(),safeCamera=await page.locator('.camera-bar').boundingBox();
+    assert.ok(safeCamera.y>=safeHeader.y+safeHeader.height+8,'Camera follows safe-area header position');
+    await shot(`safe-area-${width}`);
+  }
+  await page.evaluate(()=>{for(const edge of ['top','right','bottom','left'])document.documentElement.style.removeProperty(`--safe-${edge}`);window.dispatchEvent(new Event('resize'));});
   assert.deepEqual(errors, []); assert.deepEqual(failedRequests, []);
   if(renderer==='webgl')assert.deepEqual(consoleErrors,[],'No WebGL application console errors');
   if (renderer === 'webgl' && !process.env.SKIP_CONTEXT_LOSS) {
     await page.evaluate(() => document.querySelector('canvas').getContext('webgl2').getExtension('WEBGL_lose_context')?.loseContext());
-    await page.getByRole('alert').waitFor(); await page.reload(); await page.locator('.stage > canvas').waitFor(); assert.equal(await page.getByRole('alert').count(), 0);
+    await page.getByRole('alert').waitFor();await shot('context-loss'); await page.reload(); await page.locator('.stage > canvas').waitFor(); assert.equal(await page.getByRole('alert').count(), 0);
   }
   console.log(`PASS ${renderer}: 18 movements, phases on both sides, live playback, practice/review, all controls, camera keys, overlays/dialog, desktop/mobile/landscape; ${folder}`);
 } catch (e) { failed = true; console.error(e); }
