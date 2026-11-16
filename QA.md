@@ -1,30 +1,12 @@
-# QA — revisão 03 · 16/11/2026
+# QA — revisão 05 MASTER · 16/11/2026
 
-- `npm ci`, `npm run build`, `npm run lint` e `npm test` aprovados. São 22 testes: estado/gates, 18 especificações, continuidade, IK/alcance, contato real das caixas dos pés, espelhamento, giro conjunto, pivô plantar e aterrissagem. Nenhuma dependência adicionada.
-- Poses fora dos laterais e suas aterrissagens comparadas à Rev02 em cinco instantes: maior diferença numérica 2,23e−16. Não houve tentativa de corrigir técnicas sem nova evidência.
-- Navegador real: Chrome WebGL/SwiftShader e Firefox SVG. Seleção dos 18 movimentos, leitura antes de Demonstrar (#7/#16), espera sem autoplay, Continuar/repetir, execução em andamento, modos/ritmos, câmera/teclado, HUD/timeline, fontes e instruções.
-- Viewports 1280×900, 390×844, 320×700 e 844×390; preparação aberta/recolhida, sem overflow ou controles fora da janela. Limites projetados do rig testados contra a preparação; texto rolável e enquadramento adaptados em 320 px. Landscape mantém preparação na coluna esquerda; no celular, ela substitui o HUD duplicado enquanto o aluno lê. Pinça/toque emulados e perda/recuperação do contexto exercitados na suíte Chrome com URL real.
-- Capturas privadas em `artifacts/rev03-webgl/` e `artifacts/rev03-svg/`: #7/#16, aproximação, câmara, pivô, extensão, recolhimento e reconstrução, vistas lateral/superior; interface desktop/mobile revista. Apoio ciano e seta dos dedos distinguem o pivô da seta verde do alvo.
-- Reprodução: `BROWSER=chromium npm run test:browser`; `RENDERER=svg npm run test:browser`. `node --experimental-strip-types scripts/motion-evidence.ts` gera `artifacts/rev03/kinematics.json`.
-
-Comparação explícita **do simulador** (yaw em graus no tatame; zero aponta leste, 180 oeste). Não são ângulos medidos no vídeo ou prescrições técnicas:
-
-| Movimento / instante relativo | Pelve / tórax | Apoio | Pé atacante |
-| --- | --- | --- | --- |
-| 7 / 0,40 · câmara | 139,5 / 139,5 | esquerdo 54 | 139,5 |
-| 7 / 0,52 · pivô | 117 / 117 | esquerdo 0 | 180 |
-| 7 / 0,66 · extensão | 90 / 90 | esquerdo 0 | 180 |
-| 16 / 0,40 · câmara | 40,5 / 40,5 | direito 126 | 40,5 |
-| 16 / 0,52 · pivô | 63 / 63 | direito 180 | 0 |
-| 16 / 0,66 · extensão | 90 / 90 | direito 180 | 0 |
-
-A planta do apoio permanece fixa do instante 0,28 ao 0,80. A extensão do tornozelo no referencial do quadril é lateral (x ±0,86; z 0), em oposição à trajetória frontal. Ambos os pés tocam o chão na key pose 0,91 e a base é reconstruída até 1; essa transição pertence à entrada de 8/17, sem antecipar o golpe de braço.
-
-Fonte ATA novamente conferida: #7 direito, #16 esquerdo, aterrissagens em 8/17. Quadros privados já disponíveis do vídeo de Schafer (22–25 s) revistos: fechamento, mudança de orientação do apoio, inclinação, recolhimento e retorno sustentam a comparação qualitativa. A vista posterior oculta joelho/tornozelo em parte; não permite recuperar valores exatos. Pelve/tórax acoplados e timings são keyframes aproximados, pendentes de revisão marcial. Sem redistribuir quadros/vídeo.
-
-Limites: sem avaliação de instrutor ou iPhone físico; retorno Bah Ro não animado. Aviso de bundle >500 kB permanece. A instalação informa sete avisos moderados na cadeia de ferramentas de lint (não no runtime); não foram feitas atualizações de dependências fora desta revisão.
-
-### Ajuste de trajetória — chute frontal (03/12)
-- Feedback visual do aluno: a fase de extensão deve preservar a posição do joelho, e a canela deve descrever o arco do pé em torno dessa articulação. O frontal não pivota o pé de apoio.
-- O motor agora levanta primeiro o joelho; em seguida, move o tornozelo por arco esférico com raio igual ao comprimento da canela, relativo ao joelho da câmara. O calcanhar do chute lateral foi orientado acima da ponta, sem alterar o pivô de apoio existente.
-- Medição do simulador: deslocamento do joelho ~2 mm entre a câmara e a extensão máxima (antes ~34 cm); ambos os lados. 24 testes unitários passaram, assim como build/lint, Chrome WebGL e Firefox SVG (18 movimentos e telas desktop/mobile). Essas verificações são de software, não certificação de execução marcial.
+- Redesign de cabeçalho, HUD, preparação, timeline, câmera, fontes, foco/seleção e falhas. Logo PNG autêntica com transparência; originais preservados em `brand-reference/`, versões web de 24/51 kB e favicon de 7 kB em `public/brand/`. Vermelho medido no original: `#E03841`.
+- Tokens compartilhados entre CSS e Three.js; estúdio grafite, boneco claro e indicação técnica verde/ciano. Ação escura derivada tem contraste 5,79:1; seleção no vermelho real com texto preto, 4,51:1. Teste de navegador mede contraste das legendas e seleção; alvos mobile ≥44×44 px.
+- Biomecânica preservada: `motion.ts`, `movement-spec.ts`, `player.ts` e `lesson.ts` idênticos ao commit `828c742`. Sem ajuste da altura do frontal, joelho, pivô ou trajetórias. Nenhuma dependência adicionada.
+- Cena parada renderiza sob demanda; reprodução, órbita, damping e redimensionamento continuam atualizando. Corrigidas colisões entre presets de câmera/timeline e preparação/cabeçalho em landscape.
+- `npm ci`, `npm run build`, `npm run lint` e `npm test`: aprovados, 24 testes. Build com base `/songahm-trainer/` também verificado.
+- Navegadores reais: Chrome WebGL/SwiftShader e Firefox SVG. Suíte preserva os 18 movimentos, fases dos dois lados, leitura antes de Demonstrar, modos, reprodução/pausa, ritmos, navegação, câmera/teclado, HUD/timeline, instruções e fontes. A primeira execução WebGL excedeu o watchdog; após eliminar renders ociosos e corrigir a colisão da câmera, a suíte completa passou.
+- Viewports 1280×900, 1920×1080, 390×844, 320×700 e 844×390. Sem scroll de página ou controles fora da janela. Limites projetados do rig conferidos contra a preparação. Capturas em `artifacts/rev05-webgl/` e `artifacts/rev05-svg/`, ignoradas pelo Git.
+- Revisão visual também no navegador do Codex App: desktop/mobile, preparação aberta/recolhida, demonstração, instruções, modal e ocultação/restauração da interface. Origem da marca e distinção entre referência pública e descrição do app privado em `brand-reference/README.md`; sem dados pessoais ou módulos de XP/perfil.
+- Validação HTTP/produção: `BROWSER=chromium TEST_URL=http://127.0.0.1:4173/songahm-trainer/ npm run test:browser`; inclui toque/pinça emulados, console/rede e perda/recuperação de contexto. Publicação mantém a workflow original. Verificação pública: mesmo comando com `TEST_URL=https://teoz08.github.io/songahm-trainer/`, mais comparação dos arquivos publicados com o build local.
+- Limites: viewport/toque emulados não comprovam iPhone físico; revisão marcial permanece externa e Bah Ro não é animado. Projeto independente, sem vínculo/certificação MASTER ou ATA. Permanecem o aviso de bundle >500 kB e sete avisos moderados na cadeia de lint, fora do runtime; não houve atualização de dependências nesta revisão.
