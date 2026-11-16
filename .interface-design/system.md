@@ -1,0 +1,4 @@
+# Sala de treino
+Aluno autônomo; observar, repetir e memorizar com calma. Palco amplo de tatame, instrução ao lado e transporte abaixo. Assinatura: linha de percurso leste–oeste e numeração editorial dos movimentos.
+Paleta: papel #f6f5f0, tatame #e5e7df, grafite #28332f, pinho #305c48, argila #ad6845. Pinho é o único acento interativo; argila indica limitações.
+Espaçamento: 4, 8, 12, 16, 24, 32, 48 px. Profundidade por superfícies e linhas finas, sem pilhas de sombras. Tipografia sans do sistema e títulos serifados. Estados de foco visíveis, alvos de 44 px e botões nativos. Mobile empilha palco/instrução/controles, sem sobreposição fixa. Sem métricas, gradientes decorativos ou ícones sem função. Movimento corporal é conteúdo pedagógico; UI sem animação ornamental e reprodução inicia pausada.
