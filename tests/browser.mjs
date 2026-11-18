@@ -1,5 +1,5 @@
 import { chromium, firefox } from 'playwright';
-import { readFile, mkdir } from 'node:fs/promises';
+import { readFile, mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import assert from 'node:assert/strict';
 const watchdog = setTimeout(async () => { console.error('Browser test timed out'); setTimeout(()=>process.exit(1),2000);await browser.close();process.exit(1); }, 240000);
@@ -32,7 +32,7 @@ try {
   if(process.env.RENDERER==='svg')assert.equal(renderer,'svg','Compatibility renderer must be exercised');
   if (chrome) assert.equal(renderer, 'webgl', 'Chrome must exercise WebGL');
   if (renderer === 'svg') assert.ok(await page.locator('.stage svg path').count() > 40);
-  const folder = `artifacts/rev05-${renderer}`;
+  const folder = `artifacts/rev06-${renderer}`;
   await mkdir(folder, { recursive: true });
   const shot = name => page.screenshot({ path: `${folder}/${name}.png` });
   const current = () => page.locator('.step-list [aria-current="step"] span').innerText();
@@ -59,8 +59,27 @@ try {
   await page.setViewportSize({width:1280,height:900});await page.waitForTimeout(100);
   const stageRect = await surface.boundingBox();
   assert.ok(stageRect.width >= 1279 && stageRect.height >= 899, 'Viewport fills window');
+  const elapsed={};
+  for(const speed of ['1','2']){
+    await seek(1);await page.getByRole('combobox',{name:'Velocidade'}).selectOption(speed);
+    await page.evaluate(()=>{
+      const play=document.querySelector('.play');window.motionTiming={};
+      play.addEventListener('click',()=>{window.motionTiming.start=performance.now();},{once:true});
+      const observer=new MutationObserver(()=>{
+        if(play.textContent.includes('Continuar')){window.motionTiming.end=performance.now();observer.disconnect();}
+      });
+      observer.observe(play,{childList:true,subtree:true,characterData:true});
+    });
+    await page.getByRole('button',{name:'Demonstrar',exact:true}).click();
+    await page.getByRole('button',{name:'Continuar',exact:true}).waitFor({timeout:12000});
+    elapsed[speed]=await page.evaluate(()=>window.motionTiming.end-window.motionTiming.start);
+  }
+  assert.ok(elapsed['2']/elapsed['1']>.35&&elapsed['2']/elapsed['1']<.70,'2× approximately halves wall-clock movement duration');
+  await writeFile(`${folder}/timing.json`,JSON.stringify(elapsed));
+  await seek(1);
   await page.clock.install();
-  for (const speed of ['0.25', '0.5', '0.75', '1']) await page.getByRole('combobox', { name: 'Velocidade' }).selectOption(speed);
+  for (const speed of ['0.25', '0.5', '0.75', '1', '2']) await page.getByRole('combobox', { name: 'Velocidade' }).selectOption(speed);
+  await page.getByRole('combobox',{name:'Velocidade'}).selectOption('1');
   await page.getByRole('button', { name: 'Demonstrar', exact: false }).click();
   await page.clock.runFor(800);
   await page.getByRole('button', { name: 'Pausar', exact: false }).click();
@@ -74,8 +93,10 @@ try {
   await seek(3); await page.getByRole('button', { name: 'Repetir técnica' }).click();await page.getByRole('button',{name:'Demonstrar',exact:false}).click();
   await page.clock.runFor(700); await shot('front-moving-chamber');
   const beforeSpeed = Number(await page.getByRole('slider').inputValue());
-  await page.getByRole('combobox', { name: 'Velocidade' }).selectOption('.75'.replace(/^\./, '0.'));
+  await page.getByRole('combobox', { name: 'Velocidade' }).selectOption('2');
   assert.ok(Number(await page.getByRole('slider').inputValue()) >= beforeSpeed);
+  const speedStart=Number(await page.getByRole('slider').inputValue());await page.clock.runFor(100);
+  assert.ok(Number(await page.getByRole('slider').inputValue())-speedStart>.15,'Changing to 2× during playback advances technique time twice as fast');
   await page.getByRole('combobox', { name: 'Velocidade' }).selectOption('1');
   await page.getByRole('button', { name: 'Praticar', exact: true }).click();
   await page.clock.runFor(2800);
@@ -102,7 +123,7 @@ try {
     if ([1, 6, 8, 10, 15, 17].includes(index)) { await scrub(1); await shot(`arm-${index}`); }
   }
   for(const landing of [4,8,13,17]){await seek(landing);await scrub(.75);await shot(`landing-${landing}`);}
-  for(const index of [7,16])for(const camera of ['Lateral','Topo']){
+  for(const index of [7,16])for(const camera of ['Lateral','Frente','Costas','Topo']){
     await seek(index);await page.getByRole('button',{name:camera,exact:true}).click();
     for(const t of [.22,.40,.52,.66,.80,.96]){await scrub(t);await shot(`lateral-${index}-${camera}-${t}`);}
   }
@@ -126,9 +147,9 @@ try {
   await page.getByRole('button', { name: 'Ocultar controles' }).click();
   assert.equal(await page.locator('.timeline').count(), 0); await shot('clean-viewport');
   await page.keyboard.press('Escape'); await page.locator('.timeline').waitFor();
-  await seek(17); await page.getByRole('button', { name: 'Revisar', exact: true }).click();
-  await page.getByRole('button', { name: 'Repetir técnica' }).click(); await page.clock.runFor(3300); assert.equal(await current(), '18');
-  await page.clock.runFor(3300); assert.match(await page.locator('.phase').innerText(), /Aula concluída/);
+  await seek(17); await page.getByRole('button', { name: 'Revisar', exact: true }).click();await page.getByRole('combobox',{name:'Velocidade'}).selectOption('2');
+  await page.getByRole('button', { name: 'Repetir técnica' }).click(); await page.clock.runFor(1700); assert.equal(await current(), '18');
+  await page.clock.runFor(1700); assert.match(await page.locator('.phase').innerText(), /Aula concluída/);
   await page.getByRole('button', { name: 'Reiniciar aula', exact: true }).click(); assert.equal(await current(), '01');
   await surface.focus(); await page.keyboard.press('Tab');
   // Global navigation outside the stage and native controls.

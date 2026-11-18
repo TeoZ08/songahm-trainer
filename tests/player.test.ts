@@ -25,3 +25,22 @@ test('trocar para Aprender pausa; Praticar e Revisar não criam preparação',()
   const learn=update(s,{type:'mode',mode:'Aprender'});assert.equal(learn.time,1);assert.equal(learn.playing,false);assert.equal(learn.awaitingPreparation,true);
  }
 });
+
+test('2× reduz pela metade o tempo e mantém gates, scrub e excedente contínuo',()=>{
+ for(const mode of ['Aprender','Praticar','Revisar'] as Mode[]){
+  const base={...initial,mode,awaitingPreparation:false,playing:true,speed:1};
+  const double=update(base,{type:'speed',speed:2});
+  assert.equal(double.speed,2);
+  const full=update(base,{type:'tick',delta:1.5}),fast=update(double,{type:'tick',delta:.75});
+  assert.equal(fast.time,full.time);
+  const scrub=update(double,{type:'scrub',time:2});assert.equal(scrub.time,2);assert.equal(scrub.playing,false);
+  const end=update(double,{type:'tick',delta:1.6});
+  assert.equal(end.index,mode==='Revisar'?1:0);assert.equal(end.playing,mode==='Revisar');
+  assert.equal(update(update(double,{type:'seek',index:6}),{type:'repeat'}).awaitingPreparation,mode==='Aprender');
+ }
+ const review={...initial,mode:'Revisar' as const,speed:2,awaitingPreparation:false,playing:true};
+ const next=update(review,{type:'tick',delta:4});assert.equal(next.index,2);assert.ok(Math.abs(next.time-1.6)<1e-8);
+ const finished=update(review,{type:'tick',delta:29});assert.equal(finished.index,17);assert.equal(finished.finished,true);assert.equal(finished.playing,false);
+ const prepare=update({...review,index:6},{type:'mode',mode:'Aprender'});
+ assert.deepEqual(update(prepare,{type:'tick',delta:99}),prepare);
+});

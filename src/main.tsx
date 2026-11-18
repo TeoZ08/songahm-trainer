@@ -1,7 +1,7 @@
 import React, { useEffect, useReducer, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { lesson, sideName, sources } from './lesson.ts';
-import { duration, initial, update, type Action, type Mode } from './player.ts';
+import { duration, initial, update, speeds, type Action, type Mode } from './player.ts';
 import { createStage, type CameraView } from './stage.ts';
 import {phaseAt,sideWord} from './movement-spec.ts';
 import {Icon} from './icons.tsx';
@@ -159,7 +159,7 @@ function App() {
         </div>}
         <div className="transport">
           <div className="transport-main"><button aria-label="Reiniciar aula" title="Reiniciar aula" onClick={() => dispatch({ type: 'restart' })}><Icon name="restart"/></button><button disabled={player.index === 0} aria-label="Movimento anterior" onClick={() => dispatch({ type: 'seek', index: player.index - 1 })}><Icon name="previous"/></button><button className="play" onClick={() => dispatch({ type: 'toggle' })}><Icon name={player.playing?'pause':'play'}/><span>{player.awaitingPreparation ? 'Demonstrar' : player.playing ? 'Pausar' : player.time >= duration && !player.finished ? 'Continuar' : player.finished ? 'Rever aula' : 'Reproduzir'}</span></button><button disabled={player.index === 17} aria-label="Próximo movimento" onClick={() => dispatch({ type: 'seek', index: player.index + 1 })}><Icon name="next"/></button><button className="repeat" aria-label="Repetir técnica" title="Repetir técnica" onClick={() => dispatch({ type: 'repeat' })}><Icon name="repeat"/><span>Repetir técnica</span></button></div>
-          <label className="speed"><span>Ritmo</span><select aria-label="Velocidade" value={player.speed} onChange={e => dispatch({ type: 'speed', speed: Number(e.target.value) })}>{[.25, .5, .75, 1].map(s => <option key={s} value={s}>{String(s).replace('.', ',')}×</option>)}</select></label>
+          <label className="speed"><span>Ritmo</span><select aria-label="Velocidade" value={player.speed} onChange={e => dispatch({ type: 'speed', speed: Number(e.target.value) })}>{speeds.map(s => <option key={s} value={s}>{String(s).replace('.', ',')}×</option>)}</select></label>
           <button className="source-link" onClick={() => setShowSources(true)}>Fontes e limites <Icon name="external"/></button>
         </div>
       </section>

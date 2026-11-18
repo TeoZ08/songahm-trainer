@@ -14,7 +14,7 @@ export const lesson = { id:'songahm-1', title:'Songahm 1', movements: rows.map((
   stance:['frontKick','sideKick'].includes(technique)?'Apoio unipodal': ['inner','knife'].includes(technique)?'Base média':'Base frontal',
   direction:i<5||i>=14?'Leste':'Oeste',
   turn:i===5?'Giro horário para base média':i===14?'Giro anti-horário para base média':[1,10].includes(i)?'Sem passo':i===3||i===12?'Aterrissar com o pé do chute':i===7||i===16?'Aterrissar em base média':'Seguir a linha leste–oeste',
-  height:['high','inner'].includes(technique)||[8,17].includes(i)?'Alta':technique==='low'?'Baixa':'Média',
+  height:['high','inner','sideKick'].includes(technique)||[8,17].includes(i)?'Alta':technique==='low'?'Baixa':'Média',
   note: technique==='sideKick'?'A fonte indica deslocamento #3 e kihap. Observe o pivô do apoio, o quadril e a inclinação do tronco. Ângulos e passada são aproximações; conferir com instrutor.':technique==='frontKick'?'Elevar o joelho, estender e recolher antes de apoiar. Altura média escolhida entre as opções da fonte.':technique==='high'?'Observar o antebraço acima da cabeça. Ângulo do punho e preparação precisam de revisão marcial.':technique==='low'?'Observar a defesa baixa e o apoio ao terminar o chute. Não travar o joelho.':technique==='inner'?'A técnica aponta para o lado do deslocamento, com o tronco em base média.':'Observar o membro ativo e o recolhimento do braço oposto. Alcance e rotação são ilustrativos.',
   step:['frontKick','sideKick'].includes(technique)?'kick':technique==='inner'?'turn':['low','knife'].includes(technique)?'land':[1,10].includes(i)?'hold':'advance',
   source:'ATA + SCHOOL', validation:'Sequência conferida · execução 3D aproximada',

@@ -77,7 +77,7 @@ test('laterais acoplam pelve e tórax, pivotam a planta e estendem no referencia
   assert.ok(Math.abs(pivot.feet[other].yaw-initial.feet[other].yaw)>1.5);
   for(let f=28;f<=80;f++){const p=sample(i,f/100);assert.ok(distance(plantarCenter(p.feet[other]),anchor)<1e-9);assert.ok(Math.hypot(p.root[0]-anchor[0],p.root[2]-anchor[2])<=m.plan.constraints.supportRadius);}
   const relative=rotate(strike.feet[active].position.map((v,j)=>v-hipPoint(strike,active)[j]) as V3,-strike.yaw);
-  assert.ok(Math.abs(relative[0])>.84);assert.ok(Math.abs(relative[2])<1e-8);assert.equal(Math.sign(relative[0]),active==='R'?1:-1);
+  assert.ok(Math.abs(relative[0])>.70);assert.ok(Math.abs(relative[2])<1e-8);assert.equal(Math.sign(relative[0]),active==='R'?1:-1);
   assert.ok(Math.hypot(...strike.lean)>.39);assert.ok(Math.abs(strike.feet[active].yaw-m.plan.identity.targetBearing)<1e-8);
   assert.ok(soleHeight(sample(i,1).feet.L)>-1e-9&&soleHeight(sample(i,1).feet.R)>-1e-9);
  }
@@ -115,5 +115,19 @@ test('contatos declarados nas key poses laterais correspondem às plantas render
    if(key.contact==='both')assert.ok(Math.abs(soleHeight(p.feet[side]))<1e-9,`aterrissagem ${index+1}/${key.at}`);
    else if(key.contact==='support')assert.ok(soleHeight(p.feet[side])>.1);
   }
+ }
+});
+
+test('laterais elevados conservam ossos, alcance e linha lateral sem clamp no pico',()=>{
+ for(const i of [6,15]){
+  const m=lesson.movements[i],p=sample(i,.66),hip=hipPoint(p,m.side),f=p.feet[m.side];
+  const local=rotate(f.position.map((v,j)=>v-hip[j]) as V3,-p.yaw);
+  assert.ok(f.position[1]>1.35&&f.position[1]<1.45);
+  assert.ok(Math.abs(local[0])>.7&&Math.abs(local[2])<1e-8);
+  assert.ok(Math.abs(local[1]-.48)<1e-10);
+  const leg=solveIK(hip,f.position,p.kneePoles![m.side],...m.plan.constraints.leg);
+  assert.ok(distance(leg.end,f.position)<1e-10);
+  assert.ok(Math.abs(distance(hip,leg.joint)-.44)<1e-10);
+  assert.ok(Math.abs(distance(leg.joint,leg.end)-.44)<1e-10);
  }
 });

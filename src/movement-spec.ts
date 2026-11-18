@@ -55,18 +55,20 @@ function sideMotion(sign:number):SideMotion {
     at,label,cue:label,body:{anchor,height,pelvisTowardTarget:turn,thoraxTowardTarget:turn,lean:[0,0,sign*roll]},
     supportStep,supportPivot,active:{frame,position,knee,pitch,orientation},contact,hands:at===0?'initial':'guard',
   });
-  const chamber:V3=[sign*.12,-.06,.16],knee:V3=[sign*.55,.75,.35];
+  const chamber:V3=[sign*.12,.08,.16],knee:V3=[sign*.55,.75,.35];
   return {kind:'side',closing:.52,width:.68,phases:[
     key(0,'Base inicial','initial',.86,0,0,0,0,'initial',[0,0,0],[0,0,1],0,'initial','both'),
     key(.08,'Transferir o peso','active',.78,0,0,0,0,'initial',[0,0,0],[0,0,1],0,'initial','both'),
     key(.22,'Fechar a distância','active',.84,0,0,1,0,'initial',[0,0,0],[0,0,1],0,'initial','both'),
     key(.28,'Assumir o apoio','support',.88,0,0,1,0,'initial',[0,0,0],[0,0,1],0,'initial','both'),
     key(.40,'Câmara e giro conjunto','support',.88,.55,.12,1,.4,'hip',chamber,knee,-.65,'pelvis','support'),
-    key(.52,'Pivô do apoio','support',.90,.30,.25,1,1,'hip',[sign*.18,-.03,.12],knee,-.18,'target','support'),
+    key(.52,'Pivô do apoio','support',.90,.30,.25,1,1,'hip',[sign*.18,.10,.12],knee,-.18,'target','support'),
+    // Higher diagonal extension: trade horizontal reach for elevation within the same bones.
+    // Visual training approximation, not a measured or certified martial angle.
     // Turn the striking foot around its ankle: heel higher than the toes.
     // The body turn and planted-foot pivot of the lateral kick remain intact.
-    key(.64,'Extensão lateral','support',.92,0,.40,1,1,'hip',[sign*.86,.07,0],[sign*.8,.3,.2],.44,'target','support'),
-    key(.68,'Extensão máxima','support',.92,0,.40,1,1,'hip',[sign*.86,.07,0],[sign*.8,.3,.2],.44,'target','support'),
+    key(.64,'Extensão lateral','support',.92,0,.40,1,1,'hip',[sign*.72,.48,0],[sign*.8,.8,.2],.44,'target','support'),
+    key(.68,'Extensão máxima','support',.92,0,.40,1,1,'hip',[sign*.72,.48,0],[sign*.8,.8,.2],.44,'target','support'),
     key(.80,'Recolher à câmara','support',.88,.25,.16,1,1,'hip',chamber,knee,-.65,'pelvis','support'),
     key(.91,'Apoio na entrada da próxima técnica','landing',.76,0,0,1,0,'landing',[0,0,0],[0,0,1],0,'stance','both'),
     key(1,'Reconstruir a base','stance',.86,0,0,1,0,'landing',[0,0,0],[0,0,1],0,'stance','both'),
