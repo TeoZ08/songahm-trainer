@@ -1,3 +1,14 @@
+# QA — revisão 06 · 18/11/2026
+
+- Corpo off-white uniforme, sem faixa/marca facial; juntas e proporções ósseas preservadas. Destaques verde/ciano contínuos nas articulações, geometria mais suave e faces da cintura sem sobreposição coplanar. Sem textura ou contornos decorativos; marcações úteis do tatame mantidas.
+- Ritmos compartilhados e tipados: 0,25×/0,5×/0,75×/1×/2×. Preparação, scrub em tempo da técnica, pausa, replay e transições preservados. Teste de tempo de parede no navegador mede do clique até o estado concluído, sem relógio virtual: aproximadamente 3,26 s em 1× e 1,70 s em 2× em uma execução Chrome.
+- Laterais 7/16, pico: tornozelo **0,990 → 1,400 m**; centro do pé **0,926 → 1,336 m**; inclinação da linha quadril–tornozelo **4,65° → 33,69°**. Alcance horizontal local **0,86 → 0,72 m**, alcance total **0,863 → 0,865 m**, abaixo do limite 0,879 m. Coxa/canela continuam **0,44/0,44 m**, sem clamp no pico; pitch do pé permanece 0,44 rad, calcanhar acima da ponta.
+- Câmara/recolhimento sobem progressivamente, mantendo as mesmas fases. Comparação com baseline e4b3eed em 101 amostras: apoio, raiz, pelve/tórax e todos os movimentos fora dos laterais inalterados, incluindo frontais 3/12. Medidas privadas reproduzidas em `artifacts/rev06/comparison.json`; são coordenadas do simulador, não ângulos certificados.
+- 26 testes unitários: altura/alcance, comprimentos fixos, simetria, solo/pivô, continuidade, frontal com joelho praticamente fixo e sem pivô; 2× em todos os modos, excedente contínuo, preparação e scrub. Build e lint aprovados.
+- Suítes Chrome WebGL e Firefox SVG preservadas, com medição real de 1×/2×, revisão contínua em 2×, cinco viewports, toque/pinça e safe areas simulados. Capturas dos dois lados em preparação, pico e retração, vistas frontal/lateral/costas/topo, em `artifacts/rev06-webgl/` e `artifacts/rev06-svg/`. Execuções interrompidas pelo sinal 143 foram repetidas; as execuções finais SVG e Chrome/HTTP concluíram com código 0.
+- Identidade MASTER e workflow existentes preservadas; nenhuma dependência adicionada. Publicação e checagem de assets/console usam o mesmo GitHub Pages.
+- Limites: elevação escolhida como compromisso visual de alcance e altura, não máximo anatômico nem revisão marcial. iPhone físico não testado. Fallback SVG tem iluminação simplificada; permanecem os avisos de bundle e dependências de desenvolvimento descritos abaixo.
+
 # QA — revisão 05 MASTER · 16/11/2026
 
 - Redesign de cabeçalho, HUD, preparação, timeline, câmera, fontes, foco/seleção e falhas. Logo PNG autêntica com transparência; originais preservados em `brand-reference/`, versões web de 24/51 kB e favicon de 7 kB em `public/brand/`. Vermelho medido no original: `#E03841`.

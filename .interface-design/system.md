@@ -1,4 +1,4 @@
-# MASTER · Estúdio de treino — revisão 05
+# MASTER · Estúdio de treino — revisão 06
 
 Usuário: aluno estudando Songahm 1. Tarefa: ler a preparação, observar o corpo/apoios e controlar a demonstração. Sensação: foco, disciplina e clareza de um estúdio esportivo.
 
@@ -8,7 +8,7 @@ Viewport integral em 100dvh. HUD e preparação recolhíveis, timeline flutuante
 
 Tokens em `src/style.css`: vermelho real `--master-red: #E03841`; ação escura derivada `#B52B35` com texto quente claro; base `#0B0B0D`, superfícies `#151518`/`#1D1D22`, vinho `#2A0E13`, texto `#F7F6F5`, secundário `#B8B4B8`, linha `#393038`. Seleção de movimento usa vermelho real com texto preto (contraste 4,51:1); ação principal tem contraste 5,79:1. Demais cores não são supostamente oficiais.
 
-Three.js lê tokens CSS para ambiente, tatame, grid, luz e materiais. Boneco claro, membro ativo verde suave e apoio ciano, com legenda e setas: cor não é a única indicação. Sem alterar animações ou proporções.
+Three.js lê tokens CSS para ambiente, tatame, grid, luz e materiais. Boneco claro, membro ativo verde suave e apoio ciano, com legenda e setas: cor não é a única indicação. Corpo e juntas uniformes off-white, sem faixa ou marca facial; articulações mantidas, sem texturas ou contornos decorativos. Laterais elevados e ritmo 2× conforme Rev06; proporções ósseas preservadas.
 
 Spacing 4/8/12/16/24/32/48; raios 8/12/16. Painéis opacos, borda neutra fina e sombra leve. Tipografia do sistema, títulos esportivos moderados e números tabulares. Ícones SVG próprios de traço uniforme, nunca sem nome acessível.
 

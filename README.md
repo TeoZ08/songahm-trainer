@@ -1,6 +1,6 @@
 # Songahm Trainer · Estúdio de formas
 
-Revisão 05 conforme [GOAL-REV05-MASTER.md](GOAL-REV05-MASTER.md). Instrutor 3D independente para estudar Songahm 1, com viewport integral, HUD recolhível, fases inspecionáveis e 18 movimentos rastreáveis. Interface PT-BR; sem login, câmera de avaliação ou serviços externos em runtime. Marca MASTER autêntica fornecida para esta revisão, com demais elementos 3D procedurais.
+Revisão 06 conforme [GOAL-REV06.md](GOAL-REV06.md). Instrutor 3D independente para estudar Songahm 1, com viewport integral, HUD recolhível, fases inspecionáveis e 18 movimentos rastreáveis. Interface PT-BR; sem login, câmera de avaliação ou serviços externos em runtime. Marca MASTER autêntica fornecida para esta revisão, com demais elementos 3D procedurais.
 
 ```sh
 npm ci
@@ -18,13 +18,13 @@ BROWSER=chromium TEST_URL=http://127.0.0.1:5173 npm run test:browser
 Node 22.18+ ou 24. O teste padrão usa Firefox do Playwright (`npx playwright install firefox`, se ausente). `BROWSER=chromium` usa Chrome em `/usr/bin/google-chrome`; `CHROME_PATH` permite outro caminho. Sem `TEST_URL`, o teste serve o bundle de produção por interceptação HTTP. As capturas ficam em `artifacts/`, ignorado pelo Git.
 
 - **Aprender:** preparação recolhível antes de cada técnica; o aluno inicia com **Demonstrar**. Ritmo inicial 0,5×. Continuar abre a preparação seguinte, sem autoplay; repetir também permite reler. **Praticar:** demonstração que espera por você. **Revisar:** sequência contínua.
-- Timeline: selecionar movimento, inspecionar o instante, pausar/retomar, anterior/próximo, repetir, reiniciar e ritmos 0,25×/0,5×/0,75×/1×. O controle de instante pausa a animação para estudar uma fase.
+- Timeline: selecionar movimento, inspecionar o instante, pausar/retomar, anterior/próximo, repetir, reiniciar e ritmos 0,25×/0,5×/0,75×/1×/2×. O controle de instante pausa a animação para estudar uma fase.
 - Câmera: órbita, zoom e presets relativos ao corpo. Com o palco focado por Tab: setas giram, +/− dão zoom, Home restaura e Tab sai. Fora do palco: setas navegam. Espaço reproduz/pausa. Esc fecha instruções ou restaura o HUD.
 - Instruções e fontes são recolhíveis. A timeline pode ser reduzida; em telas baixas inicia recolhida. “Ocultar controles” libera todo o palco. Reprodução sempre começa pausada, inclusive com movimento reduzido.
 
 ## Identidade e implementação
 
-Identidade MASTER: logo transparente original otimizada para o cabeçalho/favicon, vermelho `#E03841`, superfícies pretas/grafite e controles compactos. Origem e limites em [brand-reference/README.md](brand-reference/README.md). Projeto independente, sem vínculo institucional. O redesign preserva integralmente o motor e os parâmetros do commit `828c742`; a altura dos chutes não foi ajustada.
+Identidade MASTER: logo transparente original otimizada para o cabeçalho/favicon, vermelho `#E03841`, superfícies pretas/grafite e controles compactos. Origem e limites em [brand-reference/README.md](brand-reference/README.md). Projeto independente, sem vínculo institucional. A Rev06 mantém o estúdio MASTER, simplifica o corpo para branco liso e eleva somente os laterais 7/16, com alcance horizontal moderadamente menor. Frontais 3/12 permanecem inalterados; 2× usa o mesmo tempo de técnica e preserva a preparação.
 
 React + Vite + TypeScript e Three.js direto, sem wrappers ou biblioteca de estado. `lesson.ts` guarda fatos e fontes; `movement-spec.ts` define fases, papéis, metas, limites e instruções dos 18 movimentos; `motion.ts` consome essa especificação e resolve transformações e IK analítica de dois segmentos; `player.ts`, timeline determinística; `stage.ts`, cena/câmera; `main.tsx` e `style.css`, HUD responsivo. Não depende do Blender.
 
@@ -36,7 +36,7 @@ Para reproduzir as medidas do simulador: `node --experimental-strip-types script
 
 Consultadas em 16/11/2026:
 - [ATA — Songahm #1](https://media.atamartialarts.com/media/11789/9th-grade-white-belt-form-songahm-1final.pdf), páginas 1–2: ordem, membros, bases, direções e alturas; cada movimento remete ao mesmo número no PDF.
-- [My ATA School — Songahm Il-Jahng](http://www.myataschool.com/pdf/Songahm_1.pdf), páginas 1–2: corroboração da sequência. O app escolhe altura média nos chutes, permitida pela fonte primária.
+- [My ATA School — Songahm Il-Jahng](http://www.myataschool.com/pdf/Songahm_1.pdf), páginas 1–2: corroboração da sequência. O app escolhe altura média nos frontais e alta nos laterais, opções permitidas pela fonte primária; as poses continuam aproximadas.
 - [Schafer’s ATA — Songahm 1 (Full Form)](https://www.youtube.com/watch?v=71d4-MkyZs0): player público inspecionado; quadros nominais em 15/15,25/15,5/16,5 s (frontal) e 22/22,5/23/23,5/25 s (lateral/retorno). Observados elevação/recolhimento, mudança de orientação do apoio e inclinação do tronco; a vista posterior oculta parte das juntas. São estimativas visuais, não medições de ângulo. Licença de reutilização não identificada: sem download do arquivo de vídeo nem redistribuição de quadros. Capturas de estudo ficam somente em `artifacts/`. A fotografia citada no briefing não estava disponível; apenas sua descrição foi considerada.
 
 Leitura relativa dos quadros (sem medidas certificadas):

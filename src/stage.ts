@@ -7,12 +7,12 @@ import { lesson, type Side } from './lesson.ts';
 export type CameraView='Livre'|'Frente'|'Lateral'|'Costas'|'Topo';
 export function createStage(host:HTMLDivElement,getPlayer:()=>Player,onError:(message:string)=>void,onCameraInteraction?:()=>void){
  const theme=getComputedStyle(host),color=(token:string)=>theme.getPropertyValue(token).trim();
- const palette={background:color('--stage-bg'),mat:color('--stage-mat'),grid:color('--stage-grid'),line:color('--stage-line'),body:color('--rig-body'),joint:color('--rig-joint'),belt:color('--rig-belt'),active:color('--active'),support:color('--support'),target:color('--stage-target'),light:color('--stage-light'),groundLight:color('--stage-ground-light')};
+ const palette={background:color('--stage-bg'),mat:color('--stage-mat'),grid:color('--stage-grid'),line:color('--stage-line'),body:color('--rig-body'),active:color('--active'),support:color('--support'),target:color('--stage-target'),light:color('--stage-light'),groundLight:color('--stage-ground-light')};
  const scene=new THREE.Scene();scene.background=new THREE.Color(palette.background);
  scene.fog=new THREE.Fog(palette.background,9,20);
  const camera=new THREE.PerspectiveCamera(36,1,.05,60);camera.position.set(2.6,2.3,3.4);
  let renderer:THREE.WebGLRenderer|SVGRenderer;let compatible=false;
- try{renderer=new THREE.WebGLRenderer({antialias:true,alpha:false});renderer.setPixelRatio(Math.min(devicePixelRatio,1.8));renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.outputColorSpace=THREE.SRGBColorSpace;}catch{renderer=new SVGRenderer();renderer.setQuality('high');renderer.setPrecision(3);compatible=true;}
+ try{renderer=new THREE.WebGLRenderer({antialias:true,alpha:false});renderer.setPixelRatio(Math.min(devicePixelRatio,1.8));renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.outputColorSpace=THREE.SRGBColorSpace;}catch{renderer=new SVGRenderer();renderer.setQuality('high');renderer.setPrecision(3);renderer.overdraw=.75;compatible=true;}
  host.dataset.renderer=compatible?'svg':'webgl';
  renderer.domElement.setAttribute('aria-label','Instrutor 3D articulado no tatame. Arraste para girar e use a roda ou pinça para aproximar.');renderer.domElement.setAttribute('role','img');renderer.domElement.setAttribute('tabindex','0');renderer.domElement.setAttribute('aria-keyshortcuts','ArrowLeft ArrowRight ArrowUp ArrowDown + - Home');renderer.domElement.setAttribute('aria-describedby','camera-help');host.appendChild(renderer.domElement);
  let dirty=true;const invalidate=()=>{dirty=true;};
@@ -20,8 +20,8 @@ export function createStage(host:HTMLDivElement,getPlayer:()=>Player,onError:(me
  const ambient=compatible?new THREE.AmbientLight(0xffffff,.65):new THREE.HemisphereLight(0xffffff,palette.groundLight,2.2);scene.add(ambient);
  const light=new THREE.DirectionalLight(palette.light,compatible?.45:2.6);light.position.set(-3,7,4);light.castShadow=true;light.shadow.mapSize.set(1024,1024);Object.assign(light.shadow.camera,{left:-5,right:5,top:5,bottom:-5});light.shadow.normalBias=.025;scene.add(light);
  const surface=(color:string,roughness:number)=>compatible?new THREE.MeshLambertMaterial({color}):new THREE.MeshStandardMaterial({color,roughness});
- const materials={body:surface(palette.body,.73),joint:surface(palette.joint,.65),active:surface(palette.active,.65),support:surface(palette.support,.65),belt:surface(palette.belt,1),mat:compatible?new THREE.MeshBasicMaterial({color:palette.mat}):new THREE.MeshStandardMaterial({color:palette.mat,roughness:1}),mark:new THREE.MeshBasicMaterial({color:palette.line,transparent:true,opacity:.42})};
- const geo={sphere:new THREE.SphereGeometry(1,compatible?10:16,compatible?8:12),segment:new THREE.CylinderGeometry(1,1,1,12),box:new THREE.BoxGeometry(1,1,1)};
+ const materials={body:surface(palette.body,.73),active:surface(palette.active,.65),support:surface(palette.support,.65),mat:compatible?new THREE.MeshBasicMaterial({color:palette.mat}):new THREE.MeshStandardMaterial({color:palette.mat,roughness:1}),mark:new THREE.MeshBasicMaterial({color:palette.line,transparent:true,opacity:.42})};
+ const geo={sphere:new THREE.SphereGeometry(1,compatible?20:32,compatible?16:24),segment:new THREE.CylinderGeometry(1,1,1,24),box:new THREE.BoxGeometry(1,1,1)};
  const mesh=(g:THREE.BufferGeometry,mat:THREE.Material)=>{const m=new THREE.Mesh(g,mat);m.castShadow=true;m.receiveShadow=true;scene.add(m);return m;};
  const mat=mesh(geo.box,materials.mat);mat.position.y=-.055;mat.scale.set(4.3,.1,6.6);mat.renderOrder=-100;
  const edge=new THREE.LineSegments(new THREE.EdgesGeometry(geo.box),new THREE.LineBasicMaterial({color:palette.line,transparent:true,opacity:.35}));edge.position.copy(mat.position);edge.scale.copy(mat.scale);scene.add(edge);
@@ -36,9 +36,10 @@ export function createStage(host:HTMLDivElement,getPlayer:()=>Player,onError:(me
   const texture=new THREE.CanvasTexture(canvas);labelTextures.push(texture);const label=new THREE.Mesh(new THREE.PlaneGeometry(.7,.175),new THREE.MeshBasicMaterial({map:texture,transparent:true,depthWrite:false,side:THREE.DoubleSide}));label.rotation.x=-Math.PI/2;label.position.set(0,.022,z);scene.add(label);
  }
  const parts:Record<string,THREE.Mesh>={};
- for(const name of ['head','neck','chest','hips','belt','face'])parts[name]=mesh(name==='head'||name==='neck'?geo.sphere:geo.box,name==='belt'?materials.belt:materials.body);
- parts.face.material=materials.belt;
- for(const s of ['L','R'])for(const n of ['shoulder','elbow','wrist','hip','knee','ankle','upperArm','forearm','thigh','shin','hand','foot','marker'])parts[s+n]=mesh(['shoulder','elbow','wrist','hip','knee','ankle'].includes(n)?geo.sphere:['upperArm','forearm','thigh','shin'].includes(n)?geo.segment:geo.box,n==='marker'?materials.mark:['shoulder','elbow','wrist','hip','knee','ankle'].includes(n)?materials.joint:materials.body);
+ for(const name of ['head','neck','chest','hips'])parts[name]=mesh(name==='head'||name==='neck'?geo.sphere:geo.box,materials.body);
+ for(const s of ['L','R'])for(const n of ['shoulder','elbow','wrist','hip','knee','ankle','upperArm','forearm','thigh','shin','hand','foot','marker'])parts[s+n]=mesh(['shoulder','elbow','wrist','hip','knee','ankle'].includes(n)?geo.sphere:['upperArm','forearm','thigh','shin'].includes(n)?geo.segment:geo.box,n==='marker'?materials.mark:materials.body);
+ // Separate overlapping torso faces by 2.5 mm; preserve all bone anchors.
+ for(const part of Object.values(parts))part.receiveShadow=false;
  const set=(name:string,pos:V3,size:V3,yaw=0)=>{const m=parts[name];m.position.set(...pos);m.scale.set(...size);m.rotation.set(0,yaw,0);};
  const link=(name:string,a:V3,b:V3,radius:number)=>{const m=parts[name];m.position.set(...a).add(new THREE.Vector3(...b)).multiplyScalar(.5);const d=new THREE.Vector3(...b).sub(new THREE.Vector3(...a));m.scale.set(radius,d.length(),radius);m.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),d.normalize());};
  let lastRoot:V3=[...sample(0,0).root];
@@ -46,13 +47,13 @@ export function createStage(host:HTMLDivElement,getPlayer:()=>Player,onError:(me
   const state=getPlayer(),p=sample(state.index,state.time/duration),bodyYaw=p.yaw+p.twist;
   const travel=new THREE.Vector3(...p.root).sub(new THREE.Vector3(...lastRoot));camera.position.add(travel);controls.target.add(travel);lastRoot=[...p.root];
   const at=(v:V3,yaw?:number)=>yaw===undefined?upperPoint(p,v):add(p.root,rotate(v,yaw));
-  set('hips',at([0,.02,0],p.yaw),[.34,.2,.24],p.yaw);
-  set('chest',at([0,.32,0]),[.45,.48,.24],bodyYaw);set('belt',at([0,.11,0]),[.46,.048,.26],bodyYaw);
-  set('neck',at([0,.61,0]),[.08,.10,.08],bodyYaw);set('head',at([0,.77,0]),[.14,.18,.14],bodyYaw);set('face',at([0,.78,.133]),[.13,.035,.02],bodyYaw);
-  for(const name of ['chest','belt','neck','head','face'])parts[name].rotation.set(p.lean[0],bodyYaw,p.lean[2],'YXZ');
+  set('hips',at([0,.02,0],p.yaw),[.34,.2,.235],p.yaw);
+  set('chest',at([0,.32,0]),[.45,.48,.24],bodyYaw);
+  set('neck',at([0,.61,0]),[.08,.10,.08],bodyYaw);set('head',at([0,.77,0]),[.14,.18,.14],bodyYaw);
+  for(const name of ['chest','neck','head'])parts[name].rotation.set(p.lean[0],bodyYaw,p.lean[2],'YXZ');
   for(const side of ['L','R'] as Side[]){
    const movement=lesson.movements[state.index],kick=movement.technique.includes('Kick');
-   for(const limb of ['upperArm','forearm','hand','thigh','shin','foot'])parts[side+limb].material=side===movement.side&&(kick?['thigh','shin','foot'].includes(limb):['upperArm','forearm','hand'].includes(limb))?materials.active:materials.body;
+   for(const limb of ['shoulder','upperArm','elbow','forearm','wrist','hand','hip','thigh','knee','shin','ankle','foot'])parts[side+limb].material=side===movement.side&&(kick?['hip','thigh','knee','shin','ankle','foot'].includes(limb):['shoulder','upperArm','elbow','forearm','wrist','hand'].includes(limb))?materials.active:materials.body;
    const sign=side==='L'?-1:1,shoulder=at([sign*.27,.5,0]),hip=at([sign*.14,0,0],p.yaw),ankle=p.feet[side].position;
    const leg=solveIK(hip,ankle,p.kneePoles?.[side]??rotate([0,0,1],kick&&side!==movement.side?p.feet[side].yaw:p.yaw),...movement.plan.constraints.leg);
    const handTarget=at(p.hands[side]);const arm=solveIK(shoulder,handTarget,rotate([sign*.7,-.4,-.6],bodyYaw),...movement.plan.constraints.arm);
@@ -60,7 +61,7 @@ export function createStage(host:HTMLDivElement,getPlayer:()=>Player,onError:(me
    link(side+'upperArm',shoulder,arm.joint,.073);link(side+'forearm',arm.joint,arm.end,.057);link(side+'thigh',hip,leg.joint,.09);link(side+'shin',leg.joint,leg.end,.065);
    const hand=parts[side+'hand'];hand.position.set(...arm.end);hand.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),new THREE.Vector3(...arm.end).sub(new THREE.Vector3(...arm.joint)).normalize());hand.rotateY(p.open[side]*Math.PI/2);hand.scale.set(.105,.12+p.open[side]*.08,.095-p.open[side]*.055);
    const f=p.feet[side],footPos=footCenter({...f,position:leg.end});set(side+'foot',footPos,[.14,.10,.29],f.yaw);parts[side+'foot'].rotateX(f.pitch);
-   if(kick&&movement.plan.roles.supportFoot===side)parts[side+'foot'].material=materials.support;
+   if(kick&&movement.plan.roles.supportFoot===side){parts[side+'foot'].material=materials.support;parts[side+'ankle'].material=materials.support;}
    const plant=plantarCenter(f);set(side+'marker',[plant[0],.016,plant[2]],[.19,.012,.34],f.yaw);parts[side+'marker'].renderOrder=-60;parts[side+'marker'].visible=plant[1]<.02;
 
   }
