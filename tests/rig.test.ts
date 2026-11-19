@@ -46,8 +46,8 @@ test('18 técnicas: cápsulas fora do corpo, ossos constantes e juntas contínua
 });
 test('membros distintos não se atravessam durante a sequência completa',()=>{
  const isArm=(name:string)=>/Arm|forearm|elbow|hand/.test(name);
- for(let i=0;i<18;i++)for(let n=0;n<=200;n++){
-  const capsules=limbCapsules(sample(i,n/200),lesson.movements[i].plan);
+ for(let i=0;i<18;i++)for(let n=0;n<=1000;n++){
+  const capsules=limbCapsules(sample(i,n/1000),lesson.movements[i].plan);
   for(let a=0;a<capsules.length;a++)for(let b=a+1;b<capsules.length;b++){
    const x=capsules[a],y=capsules[b];
    // Segments within the same anatomical chain meet at their joint by design.

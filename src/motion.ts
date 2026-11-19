@@ -1,8 +1,8 @@
 import {lesson,type Side} from './lesson.ts';
-import {opposite,guardHands,neutralHands,type SideKey,type SideMotion,type V3} from './movement-spec.ts';
+import {opposite,guardHands,neutralHands,type ArmKey,type ArmMotion,type SideKey,type SideMotion,type V3} from './movement-spec.ts';
 export type {V3} from './movement-spec.ts';
 export interface Foot {position:V3;yaw:number;pitch:number;}
-export interface Pose {root:V3;yaw:number;twist:number;lean:V3;feet:Record<Side,Foot>;hands:Record<Side,V3>;open:Record<Side,number>;kneePoles?:Record<Side,V3>;}
+export interface Pose {root:V3;yaw:number;twist:number;lean:V3;feet:Record<Side,Foot>;hands:Record<Side,V3>;open:Record<Side,number>;kneePoles?:Record<Side,V3>;armPoles?:Record<Side,V3>;handRoll?:Record<Side,number>;}
 export const mix=(a:number,b:number,t:number)=>a+(b-a)*t;
 export const smooth=(t:number)=>{t=Math.max(0,Math.min(1,t));return t*t*(3-2*t);};
 export const lerp=(a:V3,b:V3,t:number):V3=>a.map((v,i)=>mix(v,b[i],t)) as V3;
@@ -31,21 +31,42 @@ export const hipPoint=(p:Pose,s:Side)=>add(p.root,rotate([s==='L'?-.14:.14,0,0],
 export const footCenter=(f:Foot):V3=>add(f.position,rotate([0,-.04*Math.cos(f.pitch)-.065*Math.sin(f.pitch),-.04*Math.sin(f.pitch)+.065*Math.cos(f.pitch)],f.yaw));
 export const soleHeight=(f:Foot)=>footCenter(f)[1]-.05*Math.abs(Math.cos(f.pitch))-.145*Math.abs(Math.sin(f.pitch));
 export const plantarCenter=(f:Foot):V3=>{const c=footCenter(f);return [c[0],soleHeight(f),c[2]];};
+function applyArmKey(p:Pose,key:ArmKey,side:Side){
+ const other=opposite(side);p.hands[side]=copy(key.active);p.hands[other]=copy(key.other);
+ p.open[side]=key.open;p.open[other]=0;p.twist=key.twist;
+ p.handRoll={L:0,R:0};p.handRoll[side]=key.roll;
+ p.armPoles={L:[-1,-.2,.25],R:[1,-.2,.25]};p.armPoles[side]=copy(key.pole);p.armPoles[other]=copy(key.otherPole);
+}
+function armSample(p:Pose,a:Pose,side:Side,t:number,motion:ArmMotion){
+ let n=0;while(n<motion.phases.length-2&&t>motion.phases[n+1].at)n++;
+ const k=motion.phases[n],next=motion.phases[n+1],u=smooth((t-k.at)/(next.at-k.at));
+ const from=copy(a),to=copy(p);if(!k.fromPrevious)applyArmKey(from,k,side);applyArmKey(to,next,side);
+ for(const s of ['L','R'] as Side[]){
+  p.hands[s]=lerp(from.hands[s],to.hands[s],u);p.open[s]=mix(from.open[s],to.open[s],u);
+  p.handRoll![s]=mix(from.handRoll?.[s]??0,to.handRoll?.[s]??0,u);
+  const fallback:V3=[s==='L'?-1:1,-.2,.25];p.armPoles![s]=lerp(from.armPoles?.[s]??fallback,to.armPoles?.[s]??fallback,u);
+ }
+ p.twist=mix(from.twist,to.twist,u);
+}
+/** Reorient a planted foot around its sole centre, not around the ankle. */
+function setFootYaw(f:Foot,yaw:number){const plant=plantarCenter(f);f.yaw=yaw;f.position=add(plant,rotate([0,.09,-.065],yaw));}
 function endpoints(){
  const poses:Pose[]=[];let p=copy(ready);
  for(const m of lesson.movements){
   p=copy(p);delete p.kneePoles;const side=m.side,other=opposite(side),plan=m.plan,motion=plan.motion,dir=Math.cos(plan.identity.targetBearing);
-  p.open={L:0,R:0};p.hands=copy(neutralHands);p.twist=0;p.lean=[0,0,0];
+  delete p.armPoles;p.handRoll={L:0,R:0};p.open={L:0,R:0};p.hands=copy(neutralHands);p.twist=0;p.lean=[0,0,0];
   switch(plan.base.placement){
-   case 'middleTurn': {p.yaw=Math.PI/2;const s=p.feet[other].position;p.feet[side]=foot(s[0]+.02,s[2]+dir*plan.base.width,p.yaw);p.feet[other].yaw=p.yaw;break;}
+   case 'middleTurn': {p.yaw=Math.PI/2;setFootYaw(p.feet[other],p.yaw);const s=p.feet[other].position;p.feet[side]=foot(s[0]+.02,s[2]+dir*plan.base.width,p.yaw);break;}
    case 'sideCycle': {if(motion.kind!=='side')break;const s=p.feet[other].position,a=p.feet[side].position;p.feet[other].position=lerp(s,a,motion.closing);p.feet[other].yaw=p.yaw;const support=p.feet[other].position;p.feet[side]=foot(support[0],support[2]+dir*motion.width,p.yaw);break;}
    case 'middleLand': {const s=p.feet[other].position;p.feet[side]=foot(s[0],s[2]+dir*plan.base.width,Math.PI/2);break;}
    case 'frontKick': break;
-   default: {p.yaw=plan.identity.targetBearing;if(plan.base.placement!=='hold'){const s=p.feet[other].position;p.feet[side]=foot((side==='L'?-.2:.2)*dir,s[2]+dir*plan.base.stride,p.yaw);}p.feet.L.yaw=p.yaw;p.feet.R.yaw=p.yaw;}
+   default: {p.yaw=plan.identity.targetBearing;if(plan.base.placement!=='hold'){const s=p.feet[other].position;p.feet[side]=foot((side==='L'?-.2:.2)*dir,s[2]+dir*plan.base.stride,p.yaw);}setFootYaw(p.feet.L,p.yaw);setFootYaw(p.feet.R,p.yaw);}
   }
   if(motion.kind==='front'){const s=p.feet[other].position;p.root=[s[0],.92,s[2]];p.feet[side]={position:add(p.root,rotate(motion.chamber,p.yaw)),yaw:p.yaw,pitch:motion.pitch.chamber};}
   else {const a=p.feet.L.position,b=p.feet.R.position;p.root=[(a[0]+b[0])/2,.86,(a[2]+b[2])/2];}
-  if(motion.kind==='arm'){p.hands[side]=copy(motion.finish);p.open[side]=motion.open;p.twist=motion.torsoTwist;}
+  // A front stance loads the leading leg; a middle stance stays centred.
+  if(motion.kind==='arm'&&plan.base.final==='Base frontal'){p.root[1]=.85;p.root[2]+=dir*.06;}
+  if(motion.kind==='arm')applyArmKey(p,motion.phases.at(-1)!,side);
   else p.hands=copy(guardHands);
   poses.push(p);
  }
@@ -53,8 +74,8 @@ function endpoints(){
 }
 export const targets=endpoints();
 function blend(a:Pose,b:Pose,t:number):Pose{
- const p=copy(a);delete p.kneePoles;p.root=lerp(a.root,b.root,t);p.yaw=mix(a.yaw,b.yaw,t);p.twist=mix(a.twist,b.twist,t);p.lean=lerp(a.lean,b.lean,t);
- for(const s of ['L','R'] as Side[]){p.feet[s]={position:lerp(a.feet[s].position,b.feet[s].position,t),yaw:mix(a.feet[s].yaw,b.feet[s].yaw,t),pitch:mix(a.feet[s].pitch,b.feet[s].pitch,t)};p.hands[s]=lerp(a.hands[s],b.hands[s],t);p.open[s]=mix(a.open[s],b.open[s],t);}
+ const p=copy(a);delete p.kneePoles;p.armPoles={L:[-1,-.2,.25],R:[1,-.2,.25]};p.handRoll={L:0,R:0};p.root=lerp(a.root,b.root,t);p.yaw=mix(a.yaw,b.yaw,t);p.twist=mix(a.twist,b.twist,t);p.lean=lerp(a.lean,b.lean,t);
+ for(const s of ['L','R'] as Side[]){p.feet[s]={position:lerp(a.feet[s].position,b.feet[s].position,t),yaw:mix(a.feet[s].yaw,b.feet[s].yaw,t),pitch:mix(a.feet[s].pitch,b.feet[s].pitch,t)};p.hands[s]=lerp(a.hands[s],b.hands[s],t);p.open[s]=mix(a.open[s],b.open[s],t);p.handRoll![s]=mix(a.handRoll?.[s]??0,b.handRoll?.[s]??0,t);const fallback:V3=[s==='L'?-1:1,-.2,.25];p.armPoles![s]=lerp(a.armPoles?.[s]??fallback,b.armPoles?.[s]??fallback,t);}
  return p;
 }
 function sideSample(index:number,t:number,a:Pose,b:Pose,motion:SideMotion):Pose{
@@ -88,7 +109,7 @@ function sideSample(index:number,t:number,a:Pose,b:Pose,motion:SideMotion):Pose{
  const reach=sub(f.position,hip),length=Math.hypot(...reach);
  if(length>plan.constraints.maxReach)f.position=add(hip,reach.map(v=>v*plan.constraints.maxReach/length) as V3);
  p.kneePoles={L:[0,0,1],R:[0,0,1]};p.kneePoles[side]=rotate(lerp(k.active.knee,next.active.knee,u),p.yaw);p.kneePoles[other]=rotate([0,0,1],yaw);
- for(const s of ['L','R'] as Side[]){const hands=(key:SideKey)=>key.hands==='initial'?a.hands[s]:guardHands[s];p.hands[s]=lerp(hands(k),hands(next),u);p.open[s]=mix(a.open[s],0,smooth(t/.08));}
+ for(const s of ['L','R'] as Side[]){const hands=(key:SideKey)=>key.hands==='initial'?a.hands[s]:guardHands[s];p.hands[s]=lerp(hands(k),hands(next),u);p.open[s]=mix(a.open[s],0,smooth(t/.08));const reset=smooth(t/.22);p.handRoll![s]=(a.handRoll?.[s]??0)*(1-reset);p.armPoles![s]=lerp(a.armPoles?.[s]??[s==='L'?-1:1,-.2,.25],[s==='L'?-1:1,-.2,.25],reset);}
  return p;
 }
 export function sample(index:number,progress:number):Pose{
@@ -97,7 +118,15 @@ export function sample(index:number,progress:number):Pose{
  if(t===0)return copy(a);if(t===1)return copy(b);
  if(motion.kind==='side')return sideSample(index,t,a,b,motion);
  const move=smooth(t/(motion.kind==='front'?motion.transferEnd:motion.travelEnd)),p=blend(a,b,move);
- for(const s of ['L','R'] as Side[]){const dist=Math.hypot(...sub(a.feet[s].position,b.feet[s].position));if(dist>.03&&a.feet[s].position[1]<.11&&b.feet[s].position[1]<.11)p.feet[s].position[1]+=.13*Math.sin(Math.PI*move);}
+ for(const s of ['L','R'] as Side[]){
+  const from=a.feet[s],to=b.feet[s],plant=plantarCenter(from),nextPlant=plantarCenter(to);
+  if(Math.hypot(...sub(plant,nextPlant))<1e-9&&soleHeight(from)<.001&&soleHeight(to)<.001){
+   p.feet[s].position=add(plant,rotate([0,.09,-.065],p.feet[s].yaw));
+  }else {
+   const dist=Math.hypot(...sub(from.position,to.position));
+   if(dist>.03&&from.position[1]<.11&&to.position[1]<.11)p.feet[s].position[1]+=.13*Math.sin(Math.PI*move);
+  }
+ }
  if(motion.kind==='front'){
   const side=m.side,sign=side==='L'?-1:1,other=opposite(side),chamber=add(b.root,rotate(motion.chamber,b.yaw)),extension=add(b.root,rotate(motion.extension,b.yaw));
   const c=motion.chamberEnd,e=motion.extensionEnd,r=motion.retractionEnd;
@@ -122,7 +151,7 @@ export function sample(index:number,progress:number):Pose{
   const body=motion.body,pulse=smooth((t-body.onset)/(body.loaded-body.onset))*(1-smooth((t-body.release)/(body.end-body.release)));
   p.root=add(p.root,rotate(body.translation.map(v=>v*pulse) as V3,b.yaw));p.yaw+=body.pelvis*pulse;p.twist+=body.thorax*pulse;p.lean=body.lean.map(v=>v*pulse) as V3;p.feet[other].yaw+=body.pivot*pulse;
   p.hands[side]=lerp(p.hands[side],[sign*.33,.36,.32],pulse);p.hands[other]=lerp(p.hands[other],[-sign*.32,.38,.33],pulse);
- }else p.hands[m.side]=t<motion.preparationEnd?lerp(a.hands[m.side],motion.chamber,smooth(t/motion.preparationEnd)):lerp(motion.chamber,motion.finish,smooth((t-motion.preparationEnd)/(motion.deliveryEnd-motion.preparationEnd)));
+ }else armSample(p,a,m.side,t,motion);
  return p;
 }
 // Two-bone analytic IK: fixed lengths, stable pole direction, reachable target clamping.

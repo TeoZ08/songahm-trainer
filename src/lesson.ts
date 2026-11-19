@@ -1,6 +1,7 @@
 import {createPlan,type MovementPlan,type Side,type Technique} from './movement-spec.ts';
 export type {Side,Technique} from './movement-spec.ts';
 export const sources = [
+  {id:'MASTER_T',title:'ATA Martial Arts Master T · Songahm 1 explicado',url:'https://www.youtube.com/watch?v=wJG2mmTkFOk',detail:'Player observado em 19/11/2026, 2:38–4:48: troca dos braços na defesa alta, preparação da baixa na orelha oposta, cruzamento na interna, apontar/recolher no soco e arco da mão aberta. Vistas frontal e posterior; tempos e ângulos do rig continuam aproximados.'},
   { id: 'VIDEO', title: 'Schafer’s ATA · Songahm 1 (Full Form)', url: 'https://www.youtube.com/watch?v=71d4-MkyZs0', detail: 'Player público consultado em 16/11/2026. Quadros 15–16 s (frontal), 22–24,5 s (lateral) e bases/braços. Visão posterior limita leitura de juntas; sem medição de ângulos ou redistribuição do vídeo.' },
   { id: 'ATA', title: 'ATA · Songahm #1 “Pine Tree and Rock”', url: 'https://media.atamartialarts.com/media/11789/9th-grade-white-belt-form-songahm-1final.pdf', detail: 'Páginas 1–2: movimentos 1–18; ordem, lado, base, direção e altura.' },
   { id: 'SCHOOL', title: 'My ATA School · Songahm Il-Jahng (1)', url: 'http://www.myataschool.com/pdf/Songahm_1.pdf', detail: 'Página 2: sequência descritiva; página 1: tabela técnica. Corrobora a ordem.' },
@@ -17,6 +18,6 @@ export const lesson = { id:'songahm-1', title:'Songahm 1', movements: rows.map((
   height:['high','inner','sideKick'].includes(technique)||[8,17].includes(i)?'Alta':technique==='low'?'Baixa':'Média',
   note: technique==='sideKick'?'A fonte indica deslocamento #3 e kihap. Observe o pivô do apoio, o quadril e a inclinação do tronco. Ângulos e passada são aproximações; conferir com instrutor.':technique==='frontKick'?'Elevar o joelho, estender e recolher antes de apoiar. Altura média escolhida entre as opções da fonte.':technique==='high'?'Observar o antebraço acima da cabeça. Ângulo do punho e preparação precisam de revisão marcial.':technique==='low'?'Observar a defesa baixa e o apoio ao terminar o chute. Não travar o joelho.':technique==='inner'?'A técnica aponta para o lado do deslocamento, com o tronco em base média.':'Observar o membro ativo e o recolhimento do braço oposto. Alcance e rotação são ilustrativos.',
   step:['frontKick','sideKick'].includes(technique)?'kick':technique==='inner'?'turn':['low','knife'].includes(technique)?'land':[1,10].includes(i)?'hold':'advance',
-  source:'ATA + SCHOOL', validation:'Sequência conferida · execução 3D aproximada',
+  source:'ATA + SCHOOL + MASTER_T', validation:'Sequência conferida · execução 3D aproximada',
 })).map((m):Movement=>({...m,plan:createPlan(m)})) };
 export const sideName = (s:Side) => s==='L'?'Esquerdo':'Direito';

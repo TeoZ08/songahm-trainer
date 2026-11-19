@@ -82,6 +82,7 @@ export function createStage(host:HTMLDivElement,getPlayer:()=>Player,onError:(me
   set('neck',at([0,.61,0]),[.08,.10,.08],bodyYaw);set('head',at([0,.77,0]),[.14,.18,.14],bodyYaw);
   for(const name of ['chest','neck','head'])parts[name].rotation.set(p.lean[0],bodyYaw,p.lean[2],'YXZ');
   const movement=lesson.movements[state.index],rig=resolveRig(p,movement.plan);
+  host.dataset.movement=String(movement.id);host.dataset.phase=String(state.time/duration);
   trajectory.visible=trajectoryDot.visible=trajectoryEnabled;
   if(trajectoryEnabled){
    const side=movement.side,kick=movement.plan.motion.kind!=='arm';
@@ -101,7 +102,7 @@ export function createStage(host:HTMLDivElement,getPlayer:()=>Player,onError:(me
    link(side+'clavicle',at([sign*.19,.52,0]),shoulder,.07);
    for(const [name,pos,r] of [['shoulder',shoulder,rigRadii.shoulder],['elbow',arm.joint,rigRadii.elbow],['wrist',arm.end,rigRadii.wrist],['hip',hip,rigRadii.hip],['knee',leg.joint,rigRadii.knee],['ankle',leg.end,rigRadii.ankle]] as [string,V3,number][])set(side+name,pos,[r,r,r]);
    link(side+'upperArm',shoulder,arm.joint,rigRadii.upperArm);link(side+'forearm',arm.joint,arm.end,rigRadii.forearm);link(side+'thigh',hip,leg.joint,rigRadii.thigh);link(side+'shin',leg.joint,leg.end,rigRadii.shin);
-   const hand=parts[side+'hand'];hand.position.set(...arm.end);hand.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),new THREE.Vector3(...arm.end).sub(new THREE.Vector3(...arm.joint)).normalize());hand.rotateY(p.open[side]*Math.PI/2);hand.scale.set(...handSize(p.open[side]));
+   const hand=parts[side+'hand'];hand.position.set(...arm.end);hand.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),new THREE.Vector3(...arm.end).sub(new THREE.Vector3(...arm.joint)).normalize());hand.rotateY(p.handRoll?.[side]??p.open[side]*Math.PI/2);hand.scale.set(...handSize(p.open[side]));
    const f=p.feet[side],footPos=footCenter({...f,position:leg.end});set(side+'foot',footPos,footSize,f.yaw);parts[side+'foot'].rotateX(f.pitch);
    if(kick&&movement.plan.roles.supportFoot===side){parts[side+'foot'].material=materials.support;parts[side+'ankle'].material=materials.support;}
    const plant=plantarCenter(f);set(side+'marker',[plant[0],.016,plant[2]],[.19,.012,.34],f.yaw);parts[side+'marker'].renderOrder=-60;parts[side+'marker'].visible=plant[1]<.02;

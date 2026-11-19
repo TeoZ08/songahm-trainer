@@ -18,6 +18,6 @@ const movements=lesson.movements.map((m,i)=>{
  }
  return {movement:m.id,contacts,worstJointStepMetres:worstJointStep};
 });
-mkdirSync('artifacts/rev07',{recursive:true});
-writeFileSync('artifacts/rev07/rig.json',JSON.stringify({samplesPerMovement:samples,proximalExclusionsMetres:{hip:.18,shoulder:.13},adjacentPairExclusion:'thigh/pelvis',movements},null,2));
-console.log(`${movements.reduce((s,m)=>s+m.contacts,0)} contacts across ${18*samples} poses; artifacts/rev07/rig.json`);
+mkdirSync('artifacts/rev08',{recursive:true});
+writeFileSync('artifacts/rev08/rig.json',JSON.stringify({samplesPerMovement:samples,proximalExclusionsMetres:{hip:.18,shoulder:.13},adjacentPairExclusion:'thigh/pelvis',movements},null,2));
+console.log(`${movements.reduce((s,m)=>s+m.contacts,0)} contacts across ${18*samples} poses; artifacts/rev08/rig.json`);

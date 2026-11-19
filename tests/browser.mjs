@@ -32,7 +32,7 @@ try {
   if(process.env.RENDERER==='svg')assert.equal(renderer,'svg','Compatibility renderer must be exercised');
   if (chrome) assert.equal(renderer, 'webgl', 'Chrome must exercise WebGL');
   if (renderer === 'svg') assert.ok(await page.locator('.stage svg path').count() > 40);
-  const folder = `artifacts/rev07-${renderer}`;
+  const folder = `artifacts/rev08-${renderer}`;
   await mkdir(folder, { recursive: true });
   const shot = name => page.screenshot({ path: `${folder}/${name}.png` });
   const current = () => page.locator('.step-list [aria-current="step"] span').innerText();
@@ -122,8 +122,15 @@ try {
     if ([3, 7, 12, 16].includes(index)) for (const phase of ([7,16].includes(index)?[.05,.34,.655,.83,1]:[.05,.25,.56,.80,1])) {
       await scrub(phase); await shot(`movement-${index}-phase-${phase}`);
     }
-    if ([1, 6, 8, 10, 15, 17].includes(index)) { await scrub(1); await shot(`arm-${index}`); }
+    if (![3,7,12,16].includes(index)) {
+      await page.getByRole('button',{name:'Frente',exact:true}).click();
+      const phases=[1,10].includes(index)?[.20,.38,.72]:[4,13].includes(index)?[.27,.48,.73]:[6,15].includes(index)?[.28,.48,.73]:[8,17].includes(index)?[.30,.50,.76]:[.18,.34,.68];
+      for(const t of phases){await scrub(t);await shot(`arm-${index}-phase-${t}`);}
+      await scrub(1);await shot(`arm-${index}`);
+      if([4,6,8,13,15,17].includes(index)){await page.getByRole('button',{name:'Lateral',exact:true}).click();await scrub(phases[0]);await shot(`arm-${index}-lateral-preparation`);}
+    }
   }
+  for(const index of [3,12]){await seek(index);await page.getByRole('button',{name:'Lateral',exact:true}).click();for(const t of [.36,.50,.64,.86]){await scrub(t);await shot(`front-${index}-lateral-${t}`);}}
   for(const landing of [4,8,13,17]){await seek(landing);await scrub(.75);await shot(`landing-${landing}`);}
   for(const index of [7,16])for(const camera of ['Lateral','Frente','Costas','Topo']){
     await seek(index);await page.getByRole('button',{name:camera,exact:true}).click();

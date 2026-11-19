@@ -1,3 +1,4 @@
+import {armMotion} from './arm-motion.ts';
 export type Side = 'L' | 'R';
 export type Technique = 'high' | 'punch' | 'frontKick' | 'low' | 'inner' | 'sideKick' | 'knife';
 export type V3 = [number, number, number];
@@ -18,10 +19,8 @@ export interface SideKey extends Phase {
   contact:'both'|'active'|'support';
   hands:'initial'|'guard';
 }
-export interface ArmMotion {
-  kind:'arm'; phases:Phase[]; travelEnd:number; preparationEnd:number; deliveryEnd:number;
-  chamber:V3; finish:V3; open:number; torsoTwist:number;
-}
+export interface ArmKey extends Phase {fromPrevious?:boolean;active:V3;other:V3;open:number;roll:number;twist:number;pole:V3;otherPole:V3;}
+export interface ArmMotion {kind:'arm';phases:ArmKey[];travelEnd:number;}
 export interface FrontMotion {
   kind:'front'; phases:Phase[]; transferEnd:number; chamberEnd:number; extensionEnd:number; retractionEnd:number;
   chamber:V3; extension:V3; pitch:{chamber:number; strike:number};
@@ -43,7 +42,7 @@ export const sideWord=(s:Side)=>s==='L'?'esquerdo':'direito';
 const phase=(at:number,label:string,cue=label):Phase=>({at,label,cue});
 const limits:MovementPlan['constraints']={leg:[.44,.44],arm:[.31,.30],maxReach:.879,supportRadius:.22,floor:0};
 const guard:Record<Side,V3>={L:[-.31,.34,.32],R:[.31,.34,.32]};
-export const neutralHands:Record<Side,V3>={L:[-.30,.06,.28],R:[.30,.06,.28]};
+export const neutralHands:Record<Side,V3>={L:[-.34,.12,.15],R:[.34,.12,.15]};
 export const guardHands=guard;
 
 function sideMotion(sign:number):SideMotion {
@@ -78,7 +77,6 @@ function sideMotion(sign:number):SideMotion {
 }
 
 export function createPlan(m:MovementIdentity):MovementPlan {
-  const handSide=m.side==='L'?'esquerda':'direita';
   const sign=m.side==='L'?-1:1,other=opposite(m.side),kick=m.technique==='sideKick'||m.technique==='frontKick';
   const targetBearing=m.direction==='Leste'?0:Math.PI;
   const placement:MovementPlan['base']['placement']=m.technique==='sideKick'?'sideCycle':m.technique==='frontKick'?'frontKick':m.technique==='inner'?'middleTurn':m.technique==='knife'?'middleLand':m.step==='hold'?'hold':'front';
@@ -88,17 +86,21 @@ export function createPlan(m:MovementIdentity):MovementPlan {
     kind:'front',transferEnd:.32,chamberEnd:.36,extensionEnd:.64,retractionEnd:.86,
     // Knee loads first; ankle travels a rising forward arc, not the lateral trajectory.
     // The chamber places the knee forward and leaves the lower leg nearly vertical.
-    chamber:[sign*.18,-.43,.45],extension:[sign*.18,-.11,.77],pitch:{chamber:-.38,strike:-.28},
+    chamber:[sign*.18,-.43,.45],extension:[sign*.18,0,.77],pitch:{chamber:-.38,strike:-.28},
     arc:{liftForward:.67,liftHeight:.035},
     // A front kick has no support-foot pivot.
     body:{onset:.18,loaded:.48,release:.70,end:.98,pelvis:0,thorax:-sign*.07,lean:[-.12,0,0],translation:[0,0,0],pivot:0},
     phases:[phase(0,'Transferir o peso'),phase(.16,'Elevar o joelho'),phase(.36,'Preparar o chute frontal'),phase(.49,'Estender em arco para a frente'),phase(.64,'Recolher a perna'),phase(.86,'Manter a câmara'),phase(1,'Câmara final')],
   };
-  else {
-    const finish:Record<Exclude<Technique,'frontKick'|'sideKick'>,V3>={high:[sign*.10,.98,.30],punch:[sign*.22,m.height==='Alta'?.68:.30,.56],low:[sign*.34,-.18,.35],inner:[sign*.50,.70,.13],knife:[sign*.90,.37,.08]};
-    motion={kind:'arm',travelEnd:.72,preparationEnd:.28,deliveryEnd:.70,chamber:[sign*.25,.28,.30],finish:finish[m.technique],open:m.technique==='knife'?1:0,torsoTwist:m.technique==='punch'?sign*.09:0,
-      phases:[phase(0,'Preparação'),phase(.28,'Executar a técnica'),phase(.72,'Estabilizar a base'),phase(1,'Base final')]};
-  }
+  else motion=armMotion(m);
+  const armText={
+    high:{trajectory:'Prepare a mão ativa na cintura e o braço oposto alto. Troque os braços à frente e leve o antebraço ativo sobre a testa.',hands:'O cotovelo da defesa fica flexionado; a mão oposta recolhe junto à cintura.'},
+    low:{trajectory:'Prepare o punho junto à orelha oposta. Varra à frente e para baixo enquanto o pé do chute assenta na base frontal.',hands:'A mão oposta aponta à frente e recolhe à cintura durante a defesa baixa.'},
+    inner:{trajectory:'Cruze os braços à frente com o ativo por baixo. Durante o giro, abra o cotovelo e eleve o antebraço em flexão.',hands:'Recolha a mão oposta à cintura; não transforme a defesa interna em um braço esticado.'},
+    knife:{trajectory:'Prepare a mão aberta junto à orelha e conduza-a em arco lateral, terminando em altura média ao assentar na base.',hands:'Mão ativa aberta, palma aproximadamente para baixo no final; o braço oposto recolhe à cintura.'},
+    punch:{trajectory:`${m.step==='hold'?'Sem dar outro passo, aponte':'Durante o passo, aponte'} com a mão oposta. Leve o punho ativo ao centro em altura ${m.height.toLowerCase()} e gire-o ao estender.`,hands:'A mão que aponta recolhe junto à cintura enquanto o outro punho avança; mantenha o cotovelo sem hiperextensão.'},
+  };
+  const arm=!kick?armText[m.technique as keyof typeof armText]:null;
   const support=kick?`Pé de apoio ${sideWord(other)}; pé que golpeia ${sideWord(m.side)}.`:'Distribua o apoio entre os dois pés ao terminar a base.';
   return {
     identity:{form:'songahm-1',index:m.id,technique:m.technique,side:m.side,targetBearing,source:m.source,confidence:'ordem documentada; keyframes aproximados'},
@@ -107,12 +109,12 @@ export function createPlan(m:MovementIdentity):MovementPlan {
     constraints:{...limits},motion,
     instruction:{
       goal:`${m.title} em altura ${m.height.toLowerCase()}, para ${m.direction.toLowerCase()}.`,
-      body:m.technique==='sideKick'?'Oriente pelve e abdômen juntos na câmara; abra o quadril para estender lateralmente e incline o tronco para equilibrar.':m.technique==='frontKick'?'Transfira o peso ao apoio, eleve o joelho e acompanhe com uma pequena compensação do tronco.':'Prepare o braço sem perder a base; acompanhe o alcance com o ombro e o tronco.',
+      body:m.technique==='sideKick'?'Oriente pelve e abdômen juntos na câmara; abra o quadril para estender lateralmente e incline o tronco para equilibrar.':m.technique==='frontKick'?'Transfira o peso ao apoio, eleve o joelho e acompanhe com uma pequena compensação do tronco.':m.technique==='inner'||m.technique==='knife'?'Mantenha os joelhos flexionados na base média e acompanhe a técnica com o tronco.':'Na base frontal, carregue mais a perna da frente e coordene o assentamento com os braços.',
       support:m.technique==='sideKick'?`${support} Pivô para fora: afaste os dedos do alvo e oriente o calcanhar para ele, mantendo a planta no chão.`:support,
-      trajectory:m.technique==='sideKick'?`Feche a distância, recolha o joelho, gire o conjunto, estenda para ${m.direction.toLowerCase()} e recolha antes de apoiar na entrada do movimento ${m.id+1}.`:m.technique==='frontKick'?`Joelho sobe, perna estende para a frente e recolhe; o apoio vem no movimento ${m.id+1}.`:`Leve a mão ${handSide} ao alvo; ${m.technique==='inner'||m.technique==='high'?'preserve a flexão do cotovelo.':'estenda sem travar o cotovelo.'}`,
-      hands:kick?'Mantenha a guarda e use o braço oposto para equilibrar, sem cruzar o tronco.':`Mão ${handSide} executa a técnica; o outro braço recolhe para a guarda.`,
+      trajectory:m.technique==='sideKick'?`Feche a distância, recolha o joelho, gire o conjunto, estenda para ${m.direction.toLowerCase()} e recolha antes de apoiar na entrada do movimento ${m.id+1}.`:m.technique==='frontKick'?`Joelho sobe, perna estende para a frente e recolhe; o apoio vem no movimento ${m.id+1}.`:arm!.trajectory,
+      hands:kick?'Mantenha a guarda e use o braço oposto para equilibrar, sem cruzar o tronco.':arm!.hands,
       cues:m.technique==='sideKick'?[`Apoio ${sideWord(other)}`,`Alvo ${m.direction.toLowerCase()}`,'Calcanhar ao alvo','Quadril e abdômen juntos']:['Base estável','Lado do corpo, não da tela','Recolher com controle'],
-      uncertainty:m.technique==='sideKick'?`Tempos, amplitudes e passada #3 são aproximações. A aterrissagem é compartilhada com a entrada do movimento ${m.id+1}; o golpe de braço só ocorre nele.`:'Sequência documentada; preparação, ângulos e tempos do boneco são aproximações visuais.',
+      uncertainty:m.technique==='sideKick'?`Tempos, amplitudes e passada #3 são aproximações. A aterrissagem é compartilhada com a entrada do movimento ${m.id+1}; o golpe de braço só ocorre nele.`:'Sequência documentada; fases confrontadas com demonstrações ATA. Ângulos, dedos, distribuição de peso e tempos continuam aproximações do rig, sem revisão marcial.',
     },
   };
 }

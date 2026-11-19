@@ -48,10 +48,11 @@ export function segmentDistance(a:V3,b:V3,c:V3,d:V3):number{
 export function resolveRig(p:Pose,plan:MovementPlan){
  const sides={} as Record<Side,{shoulder:V3;hip:V3;leg:ReturnType<typeof solveIK>;arm:ReturnType<typeof solveIK>}>;
  for(const side of ['L','R'] as Side[]){
-  // A short clavicle joins this shoulder anchor to the chest in the renderer.
-  const sign=side==='L'?-1:1,hip=hipPoint(p,side),shoulder=upperPoint(p,[sign*.33,.54,0]),kick=plan.motion.kind!=='arm';
+  // The visible humeral anchor is anterior to the chest mid-plane, joined by
+  // a short clavicle. Crossing chambers can pass in front of the actual torso.
+  const sign=side==='L'?-1:1,hip=hipPoint(p,side),shoulder=upperPoint(p,[sign*.33,.54,.08]),kick=plan.motion.kind!=='arm';
   const leg=solveIK(hip,p.feet[side].position,p.kneePoles?.[side]??rotate([0,0,1],kick&&side!==plan.identity.side?p.feet[side].yaw:p.yaw),...plan.constraints.leg);
-  const arm=solveIK(shoulder,upperPoint(p,p.hands[side]),rotate([sign*1,-.2,.25],p.yaw+p.twist),...plan.constraints.arm);
+  const arm=solveIK(shoulder,upperPoint(p,p.hands[side]),rotate(p.armPoles?.[side]??[sign*1,-.2,.25],p.yaw+p.twist),...plan.constraints.arm);
   sides[side]={hip,shoulder,leg,arm};
  }
  return sides;
