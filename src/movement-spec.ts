@@ -43,7 +43,7 @@ export const sideWord=(s:Side)=>s==='L'?'esquerdo':'direito';
 const phase=(at:number,label:string,cue=label):Phase=>({at,label,cue});
 const limits:MovementPlan['constraints']={leg:[.44,.44],arm:[.31,.30],maxReach:.879,supportRadius:.22,floor:0};
 const guard:Record<Side,V3>={L:[-.31,.34,.32],R:[.31,.34,.32]};
-export const neutralHands:Record<Side,V3>={L:[-.26,.02,.12],R:[.26,.02,.12]};
+export const neutralHands:Record<Side,V3>={L:[-.30,.06,.28],R:[.30,.06,.28]};
 export const guardHands=guard;
 
 function sideMotion(sign:number):SideMotion {
@@ -55,22 +55,24 @@ function sideMotion(sign:number):SideMotion {
     at,label,cue:label,body:{anchor,height,pelvisTowardTarget:turn,thoraxTowardTarget:turn,lean:[0,0,sign*roll]},
     supportStep,supportPivot,active:{frame,position,knee,pitch,orientation},contact,hands:at===0?'initial':'guard',
   });
-  const chamber:V3=[sign*.12,.08,.16],knee:V3=[sign*.55,.75,.35];
+  // Keep the folding leg outside the abdomen; bend out/back in hip space.
+  // Outward intermediate poles avoid passing through a collinear IK singularity.
+  const chamber:V3=[sign*.35,.08,.30],knee:V3=[sign*1,.5,-2];
   return {kind:'side',closing:.52,width:.68,phases:[
     key(0,'Base inicial','initial',.86,0,0,0,0,'initial',[0,0,0],[0,0,1],0,'initial','both'),
     key(.08,'Transferir o peso','active',.78,0,0,0,0,'initial',[0,0,0],[0,0,1],0,'initial','both'),
     key(.22,'Fechar a distância','active',.84,0,0,1,0,'initial',[0,0,0],[0,0,1],0,'initial','both'),
-    key(.28,'Assumir o apoio','support',.88,0,0,1,0,'initial',[0,0,0],[0,0,1],0,'initial','both'),
+    key(.28,'Assumir o apoio','support',.88,0,0,1,0,'initial',[0,0,0],[sign*2,0,1],0,'initial','both'),
     key(.40,'Câmara e giro conjunto','support',.88,.55,.12,1,.4,'hip',chamber,knee,-.65,'pelvis','support'),
-    key(.52,'Pivô do apoio','support',.90,.30,.25,1,1,'hip',[sign*.18,.10,.12],knee,-.18,'target','support'),
+    key(.52,'Pivô do apoio','support',.90,.30,.25,1,1,'hip',[sign*.32,.10,.25],knee,-.18,'target','support'),
     // Higher diagonal extension: trade horizontal reach for elevation within the same bones.
     // Visual training approximation, not a measured or certified martial angle.
     // Turn the striking foot around its ankle: heel higher than the toes.
     // The body turn and planted-foot pivot of the lateral kick remain intact.
-    key(.64,'Extensão lateral','support',.92,0,.40,1,1,'hip',[sign*.72,.48,0],[sign*.8,.8,.2],.44,'target','support'),
-    key(.68,'Extensão máxima','support',.92,0,.40,1,1,'hip',[sign*.72,.48,0],[sign*.8,.8,.2],.44,'target','support'),
+    key(.64,'Extensão lateral','support',.92,0,.40,1,1,'hip',[sign*.72,.48,0],[sign*1,.5,-2],.44,'target','support'),
+    key(.68,'Extensão máxima','support',.92,0,.40,1,1,'hip',[sign*.72,.48,0],[sign*1,.5,-2],.44,'target','support'),
     key(.80,'Recolher à câmara','support',.88,.25,.16,1,1,'hip',chamber,knee,-.65,'pelvis','support'),
-    key(.91,'Apoio na entrada da próxima técnica','landing',.76,0,0,1,0,'landing',[0,0,0],[0,0,1],0,'stance','both'),
+    key(.91,'Apoio na entrada da próxima técnica','landing',.76,0,0,1,0,'landing',[0,0,0],[sign*2,0,1],0,'stance','both'),
     key(1,'Reconstruir a base','stance',.86,0,0,1,0,'landing',[0,0,0],[0,0,1],0,'stance','both'),
   ]};
 }
@@ -93,8 +95,8 @@ export function createPlan(m:MovementIdentity):MovementPlan {
     phases:[phase(0,'Transferir o peso'),phase(.16,'Elevar o joelho'),phase(.36,'Preparar o chute frontal'),phase(.49,'Estender em arco para a frente'),phase(.64,'Recolher a perna'),phase(.86,'Manter a câmara'),phase(1,'Câmara final')],
   };
   else {
-    const finish:Record<Exclude<Technique,'frontKick'|'sideKick'>,V3>={high:[sign*.10,.98,.18],punch:[sign*.22,m.height==='Alta'?.68:.30,.56],low:[sign*.34,-.18,.35],inner:[sign*.50,.70,.13],knife:[sign*.855,.37,.08]};
-    motion={kind:'arm',travelEnd:.72,preparationEnd:.28,deliveryEnd:.70,chamber:[sign*.17,.28,.28],finish:finish[m.technique],open:m.technique==='knife'?1:0,torsoTwist:m.technique==='punch'?sign*.09:0,
+    const finish:Record<Exclude<Technique,'frontKick'|'sideKick'>,V3>={high:[sign*.10,.98,.30],punch:[sign*.22,m.height==='Alta'?.68:.30,.56],low:[sign*.34,-.18,.35],inner:[sign*.50,.70,.13],knife:[sign*.90,.37,.08]};
+    motion={kind:'arm',travelEnd:.72,preparationEnd:.28,deliveryEnd:.70,chamber:[sign*.25,.28,.30],finish:finish[m.technique],open:m.technique==='knife'?1:0,torsoTwist:m.technique==='punch'?sign*.09:0,
       phases:[phase(0,'Preparação'),phase(.28,'Executar a técnica'),phase(.72,'Estabilizar a base'),phase(1,'Base final')]};
   }
   const support=kick?`Pé de apoio ${sideWord(other)}; pé que golpeia ${sideWord(m.side)}.`:'Distribua o apoio entre os dois pés ao terminar a base.';

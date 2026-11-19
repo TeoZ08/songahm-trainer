@@ -25,7 +25,7 @@ const sub=(a:V3,b:V3):V3=>a.map((v,i)=>v-b[i]) as V3;
 const copy=<T>(v:T):T=>structuredClone(v);
 const delta=(a:number,b:number)=>Math.atan2(Math.sin(b-a),Math.cos(b-a));
 const foot=(x:number,z:number,yaw=0):Foot=>({position:[x,.09,z],yaw,pitch:0});
-export const ready:Pose={root:[0,.91,-.8],yaw:0,twist:0,lean:[0,0,0],feet:{L:foot(-.19,-.8),R:foot(.19,-.8)},hands:{L:[-.24,-.13,.25],R:[.24,-.13,.25]},open:{L:0,R:0}};
+export const ready:Pose={root:[0,.91,-.8],yaw:0,twist:0,lean:[0,0,0],feet:{L:foot(-.19,-.8),R:foot(.19,-.8)},hands:{L:[-.32,.04,.28],R:[.32,.04,.28]},open:{L:0,R:0}};
 export const hipPoint=(p:Pose,s:Side)=>add(p.root,rotate([s==='L'?-.14:.14,0,0],p.yaw));
 // The foot box and plantar contact are shared with the renderer and tests.
 export const footCenter=(f:Foot):V3=>add(f.position,rotate([0,-.04*Math.cos(f.pitch)-.065*Math.sin(f.pitch),-.04*Math.sin(f.pitch)+.065*Math.cos(f.pitch)],f.yaw));
@@ -120,7 +120,7 @@ export function sample(index:number,progress:number):Pose{
     :aroundKnee(shinEnd,shinStart,(t-e)/(r-e));
   p.feet[side].pitch=t<c?mix(a.feet[side].pitch,motion.pitch.chamber,smooth(t/c)):t<e?mix(motion.pitch.chamber,motion.pitch.strike,smooth((t-c)/(e-c))):mix(motion.pitch.strike,motion.pitch.chamber,smooth((t-e)/(r-e)));
   const body=motion.body,pulse=smooth((t-body.onset)/(body.loaded-body.onset))*(1-smooth((t-body.release)/(body.end-body.release)));
-  p.root=add(p.root,rotate(body.translation.map(v=>v*pulse) as V3,b.yaw));p.yaw+=body.pelvis*pulse;p.twist=body.thorax*pulse;p.lean=body.lean.map(v=>v*pulse) as V3;p.feet[other].yaw+=body.pivot*pulse;
+  p.root=add(p.root,rotate(body.translation.map(v=>v*pulse) as V3,b.yaw));p.yaw+=body.pelvis*pulse;p.twist+=body.thorax*pulse;p.lean=body.lean.map(v=>v*pulse) as V3;p.feet[other].yaw+=body.pivot*pulse;
   p.hands[side]=lerp(p.hands[side],[sign*.33,.36,.32],pulse);p.hands[other]=lerp(p.hands[other],[-sign*.32,.38,.33],pulse);
  }else p.hands[m.side]=t<motion.preparationEnd?lerp(a.hands[m.side],motion.chamber,smooth(t/motion.preparationEnd)):lerp(motion.chamber,motion.finish,smooth((t-motion.preparationEnd)/(motion.deliveryEnd-motion.preparationEnd)));
  return p;

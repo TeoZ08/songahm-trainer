@@ -32,7 +32,7 @@ try {
   if(process.env.RENDERER==='svg')assert.equal(renderer,'svg','Compatibility renderer must be exercised');
   if (chrome) assert.equal(renderer, 'webgl', 'Chrome must exercise WebGL');
   if (renderer === 'svg') assert.ok(await page.locator('.stage svg path').count() > 40);
-  const folder = `artifacts/rev06-${renderer}`;
+  const folder = `artifacts/rev07-${renderer}`;
   await mkdir(folder, { recursive: true });
   const shot = name => page.screenshot({ path: `${folder}/${name}.png` });
   const current = () => page.locator('.step-list [aria-current="step"] span').innerText();
@@ -125,7 +125,7 @@ try {
   for(const landing of [4,8,13,17]){await seek(landing);await scrub(.75);await shot(`landing-${landing}`);}
   for(const index of [7,16])for(const camera of ['Lateral','Frente','Costas','Topo']){
     await seek(index);await page.getByRole('button',{name:camera,exact:true}).click();
-    for(const t of [.22,.40,.52,.66,.80,.96]){await scrub(t);await shot(`lateral-${index}-${camera}-${t}`);}
+    for(const t of [.22,.40,.475,.52,.66,.80,.96]){await scrub(t);await shot(`lateral-${index}-${camera}-${t}`);}
   }
   await seek(7); await scrub(.65);
   let image = await surface.screenshot();

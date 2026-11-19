@@ -1,8 +1,9 @@
 import * as THREE from 'three';
 import { SVGRenderer, SVGObject } from 'three/addons/renderers/SVGRenderer.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { add, rotate, sample, solveIK, upperPoint, footCenter, plantarCenter, type V3 } from './motion.ts';
+import { add, rotate, sample, upperPoint, footCenter, plantarCenter, type V3 } from './motion.ts';
 import { duration, type Player } from './player.ts';
+import {resolveRig,rigShape} from './rig.ts';
 import { lesson, type Side } from './lesson.ts';
 export type CameraView='Livre'|'Frente'|'Lateral'|'Costas'|'Topo';
 export function createStage(host:HTMLDivElement,getPlayer:()=>Player,onError:(message:string)=>void,onCameraInteraction?:()=>void){
@@ -37,7 +38,7 @@ export function createStage(host:HTMLDivElement,getPlayer:()=>Player,onError:(me
  }
  const parts:Record<string,THREE.Mesh>={};
  for(const name of ['head','neck','chest','hips'])parts[name]=mesh(name==='head'||name==='neck'?geo.sphere:geo.box,materials.body);
- for(const s of ['L','R'])for(const n of ['shoulder','elbow','wrist','hip','knee','ankle','upperArm','forearm','thigh','shin','hand','foot','marker'])parts[s+n]=mesh(['shoulder','elbow','wrist','hip','knee','ankle'].includes(n)?geo.sphere:['upperArm','forearm','thigh','shin'].includes(n)?geo.segment:geo.box,n==='marker'?materials.mark:materials.body);
+ for(const s of ['L','R'])for(const n of ['shoulder','elbow','wrist','hip','knee','ankle','clavicle','upperArm','forearm','thigh','shin','hand','foot','marker'])parts[s+n]=mesh(['shoulder','elbow','wrist','hip','knee','ankle'].includes(n)?geo.sphere:['clavicle','upperArm','forearm','thigh','shin'].includes(n)?geo.segment:geo.box,n==='marker'?materials.mark:materials.body);
  // Separate overlapping torso faces by 2.5 mm; preserve all bone anchors.
  for(const part of Object.values(parts))part.receiveShadow=false;
  const set=(name:string,pos:V3,size:V3,yaw=0)=>{const m=parts[name];m.position.set(...pos);m.scale.set(...size);m.rotation.set(0,yaw,0);};
@@ -47,16 +48,16 @@ export function createStage(host:HTMLDivElement,getPlayer:()=>Player,onError:(me
   const state=getPlayer(),p=sample(state.index,state.time/duration),bodyYaw=p.yaw+p.twist;
   const travel=new THREE.Vector3(...p.root).sub(new THREE.Vector3(...lastRoot));camera.position.add(travel);controls.target.add(travel);lastRoot=[...p.root];
   const at=(v:V3,yaw?:number)=>yaw===undefined?upperPoint(p,v):add(p.root,rotate(v,yaw));
-  set('hips',at([0,.02,0],p.yaw),[.34,.2,.235],p.yaw);
-  set('chest',at([0,.32,0]),[.45,.48,.24],bodyYaw);
+  set('hips',at(rigShape.pelvis.center,p.yaw),rigShape.pelvis.half.map(v=>v*2) as V3,p.yaw);
+  set('chest',at(rigShape.chest.center),rigShape.chest.half.map(v=>v*2) as V3,bodyYaw);
   set('neck',at([0,.61,0]),[.08,.10,.08],bodyYaw);set('head',at([0,.77,0]),[.14,.18,.14],bodyYaw);
   for(const name of ['chest','neck','head'])parts[name].rotation.set(p.lean[0],bodyYaw,p.lean[2],'YXZ');
+  const rig=resolveRig(p,lesson.movements[state.index].plan);
   for(const side of ['L','R'] as Side[]){
    const movement=lesson.movements[state.index],kick=movement.technique.includes('Kick');
    for(const limb of ['shoulder','upperArm','elbow','forearm','wrist','hand','hip','thigh','knee','shin','ankle','foot'])parts[side+limb].material=side===movement.side&&(kick?['hip','thigh','knee','shin','ankle','foot'].includes(limb):['shoulder','upperArm','elbow','forearm','wrist','hand'].includes(limb))?materials.active:materials.body;
-   const sign=side==='L'?-1:1,shoulder=at([sign*.27,.5,0]),hip=at([sign*.14,0,0],p.yaw),ankle=p.feet[side].position;
-   const leg=solveIK(hip,ankle,p.kneePoles?.[side]??rotate([0,0,1],kick&&side!==movement.side?p.feet[side].yaw:p.yaw),...movement.plan.constraints.leg);
-   const handTarget=at(p.hands[side]);const arm=solveIK(shoulder,handTarget,rotate([sign*.7,-.4,-.6],bodyYaw),...movement.plan.constraints.arm);
+   const sign=side==='L'?-1:1,{shoulder,hip,leg,arm}=rig[side];
+   link(side+'clavicle',at([sign*.19,.52,0]),shoulder,.07);
    for(const [name,pos,r] of [['shoulder',shoulder,.085],['elbow',arm.joint,.08],['wrist',arm.end,.06],['hip',hip,.085],['knee',leg.joint,.10],['ankle',leg.end,.075]] as [string,V3,number][])set(side+name,pos,[r,r,r]);
    link(side+'upperArm',shoulder,arm.joint,.073);link(side+'forearm',arm.joint,arm.end,.057);link(side+'thigh',hip,leg.joint,.09);link(side+'shin',leg.joint,leg.end,.065);
    const hand=parts[side+'hand'];hand.position.set(...arm.end);hand.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),new THREE.Vector3(...arm.end).sub(new THREE.Vector3(...arm.joint)).normalize());hand.rotateY(p.open[side]*Math.PI/2);hand.scale.set(.105,.12+p.open[side]*.08,.095-p.open[side]*.055);

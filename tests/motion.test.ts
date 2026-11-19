@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { sample, targets, ready, solveIK, add, rotate, upperPoint, hipPoint, plantarCenter, soleHeight, type V3 } from '../src/motion.ts';
+import { sample, targets, ready, solveIK, add, rotate, hipPoint, plantarCenter, soleHeight, type V3 } from '../src/motion.ts';
+import {resolveRig} from '../src/rig.ts';
 import {lesson,type Side} from '../src/lesson.ts';
 const distance=(a:V3,b:V3)=>Math.hypot(...a.map((v,i)=>v-b[i]));
 test('18 movimentos com ordem, lado e rastreabilidade',()=>{assert.equal(lesson.movements.length,18);assert.deepEqual(lesson.movements.filter(m=>m.technique.includes('Kick')).map(m=>[m.id,m.side]),[[3,'R'],[7,'R'],[12,'L'],[16,'L']]);for(const m of lesson.movements){assert.ok(m.source.includes('ATA'));assert.ok(m.validation.includes('aproximada'));}assert.equal(lesson.movements[8].height,'Alta');assert.equal(lesson.movements[17].height,'Alta');});
@@ -56,7 +57,7 @@ test('frontais mantêm o joelho quase fixo durante extensão e recolhimento',()=
  }
 });
 
-test('mão aberta estende o cotovelo; defesa interna preserva flexão',()=>{for(const i of [7,16,5,14]){const p=sample(i,1),side=lesson.movements[i].side,sign=side==='L'?-1:1,shoulder=upperPoint(p,[sign*.27,.5,0]),hand=upperPoint(p,p.hands[side]),r=solveIK(shoulder,hand,rotate([sign*.7,-.4,-.6],p.yaw+p.twist),.31,.30),a=r.joint.map((v,j)=>v-shoulder[j]),b=r.end.map((v,j)=>v-r.joint[j]),dot=a.reduce((n,v,j)=>n+v*b[j],0)/(.31*.30);if(i===7||i===16)assert.ok(dot>.9);else assert.ok(dot<.8);}});
+test('mão aberta estende o cotovelo; defesa interna preserva flexão',()=>{for(const i of [7,16,5,14]){const p=sample(i,1),side=lesson.movements[i].side,{shoulder,arm:r}=resolveRig(p,lesson.movements[i].plan)[side],a=r.joint.map((v,j)=>v-shoulder[j]),b=r.end.map((v,j)=>v-r.joint[j]),dot=a.reduce((n,v,j)=>n+v*b[j],0)/(.31*.30);if(i===7||i===16)assert.ok(dot>.9);else assert.ok(dot<.8);}});
 
 test('especificação dos 18 movimentos fornece fases, fontes, papéis e limites',()=>{
  for(const {plan:p,id} of lesson.movements){
