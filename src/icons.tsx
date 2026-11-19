@@ -1,5 +1,6 @@
 import type {CSSProperties} from 'react';
 const paths = {
+ path:'M4 19c0-10 16 2 16-9a6 6 0 0 0-6-6M2 19h4M18 8l2 2 2-2',
  play:'m8 5 11 7-11 7Z',pause:'M8 5v14M16 5v14',
  previous:'m15 6-6 6 6 6',next:'m9 6 6 6-6 6',
  restart:'M4 10a8 8 0 1 1 0 5M4 4v6h6',

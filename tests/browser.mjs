@@ -18,7 +18,7 @@ try {
     try {
       const pathname = new URL(route.request().url()).pathname;
       const file = path.join(process.cwd(), 'dist', pathname === '/' ? 'index.html' : pathname);
-      await route.fulfill({ body: await readFile(file), contentType: { '.html': 'text/html', '.js': 'application/javascript', '.css': 'text/css', '.svg':'image/svg+xml','.png':'image/png' }[path.extname(file)] || 'application/octet-stream' });
+      await route.fulfill({ body: await readFile(file), contentType: { '.html': 'text/html', '.js': 'application/javascript', '.css': 'text/css', '.svg':'image/svg+xml','.png':'image/png','.webp':'image/webp' }[path.extname(file)] || 'application/octet-stream' });
     } catch { await route.fulfill({ status: 404, body: 'Not found' }); }
   });
   await page.goto(process.env.TEST_URL || 'http://songahm.local/');
@@ -54,6 +54,8 @@ try {
     return {caption:ratio(luminance(caption.color),luminance(panel.backgroundColor)),selection:ratio(luminance(selected.color),luminance(selected.backgroundColor))};
   });
   assert.ok(contrast.caption>=4.5&&contrast.selection>=4.5,'Brand captions and selected movement have AA contrast');
+  if(renderer==='webgl')await page.locator('.stage[data-material=rubber]').waitFor();
+  assert.equal(await page.getByRole('button',{name:'Trajetória',exact:true}).getAttribute('aria-pressed'),'false');
   await shot('desktop');
   await page.setViewportSize({width:1920,height:1080});await page.waitForTimeout(100);await shot('desktop-1920');
   await page.setViewportSize({width:1280,height:900});await page.waitForTimeout(100);
@@ -127,6 +129,18 @@ try {
     await seek(index);await page.getByRole('button',{name:camera,exact:true}).click();
     for(const t of [.22,.40,.475,.52,.66,.80,.96]){await scrub(t);await shot(`lateral-${index}-${camera}-${t}`);}
   }
+  await seek(7);await scrub(.475);
+  const withoutPath=await surface.screenshot();
+  await page.getByRole('button',{name:'Trajetória',exact:true}).click();await page.clock.runFor(100);
+  assert.equal(await page.locator('.stage').getAttribute('data-trajectory'),'on');
+  assert.equal(await page.locator('.stage').getAttribute('data-trajectory-movement'),'7');
+  assert.ok(!withoutPath.equals(await surface.screenshot()),'Trajectory adds visible geometry');
+  if(renderer==='svg')assert.ok(await surface.locator('path').evaluateAll(paths=>paths.some(p=>p.getAttribute('style')?.includes('stroke-dasharray:5,3'))),'SVG uses pixel-sized dashes');
+  await shot('trajectory-chamber');
+  await seek(16);await scrub(.475);await page.clock.runFor(100);
+  assert.equal(await page.locator('.stage').getAttribute('data-trajectory-movement'),'16','Path updates with the selected movement');
+  await page.getByRole('button',{name:'Trajetória',exact:true}).click();await page.clock.runFor(100);
+  assert.equal(await page.locator('.stage').getAttribute('data-trajectory'),'off');
   await seek(7); await scrub(.65);
   let image = await surface.screenshot();
   for (const name of ['Frente', 'Lateral', 'Costas', 'Topo', 'Restaurar câmera']) {
@@ -174,6 +188,13 @@ try {
     if(width<=640)assert.ok(rig.top>=(await page.locator('.topbar').boundingBox()).height+4,'Rig below mobile header');
     if(width<=640)assert.ok(rig.bottom<=controls.y+4,`${width}: rig above preparation ${rig.bottom}/${controls.y}`);
     else {assert.ok(rig.left>=prep.x+prep.width-4,'Landscape rig outside preparation column');const header=await page.locator('.topbar').boundingBox();assert.ok(prep.y>=header.y+header.height+8,'Landscape preparation below header');}
+    if(!await page.locator('#camera-presets').count())await page.locator('.camera-toggle').click();
+    await page.clock.runFor(100);
+    const cameraBounds=await page.locator('.camera-bar').boundingBox();
+    assert.ok(cameraBounds.y+cameraBounds.height<=controls.y-6,`${width}: expanded camera clears the timeline`);
+    const trace=page.getByRole('button',{name:'Trajetória',exact:true});
+    await trace.click();assert.equal(await trace.getAttribute('aria-pressed'),'true');
+    await trace.click();await page.locator('.camera-toggle').click();
     await shot(`preparation-${width}`);
     await page.locator('.preparation summary').click();await shot(`preparation-folded-${width}`);
     await page.getByRole('button',{name:'Revisar',exact:true}).click();

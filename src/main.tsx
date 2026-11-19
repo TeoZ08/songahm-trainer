@@ -9,6 +9,7 @@ import './style.css';
 
 function App() {
   const [player, dispatch] = useReducer((s: typeof initial, a: Action) => update(s, a), initial);
+  const [trajectory,setTrajectory]=useState(false);
   const [view, setView] = useState<CameraView>('Livre');
   const [compatible, setCompatible] = useState(false);
   const [error, setError] = useState('');
@@ -53,6 +54,7 @@ function App() {
     }
     return () => stage.current?.dispose();
   }, []);
+  useEffect(()=>{stage.current?.setTrajectory(trajectory);},[trajectory]);
   useEffect(()=>{
     const root=host.current?.parentElement;if(!root)return;
     const adapt=()=>{
@@ -131,7 +133,8 @@ function App() {
         <button className="camera-toggle" aria-expanded={cameraTools} aria-controls="camera-presets" onClick={()=>setCameraTools(!cameraTools)}><Icon name="camera"/><span>Câmera</span><Icon name={cameraTools?'up':'down'}/></button>
         {cameraTools&&<div className="camera-presets" id="camera-presets">
         {(['Livre', 'Frente', 'Lateral', 'Costas', 'Topo'] as CameraView[]).map(v => <button key={v} aria-pressed={view === v} onClick={() => camera(v)}>{v}</button>)}
-        <button onClick={() => camera('Livre')} aria-label="Restaurar câmera" title="Restaurar câmera"><Icon name="restart"/></button></div>}
+        <button onClick={() => camera('Livre')} aria-label="Restaurar câmera" title="Restaurar câmera"><Icon name="restart"/></button>
+        <button className="trajectory-toggle" aria-pressed={trajectory} title="Mostrar o percurso da mão ou do tornozelo nesta técnica" onClick={()=>setTrajectory(!trajectory)}><Icon name="path"/>Trajetória</button></div>}
       </nav>
       <div className="stage-legend" aria-label="Legenda do instrutor"><span><i className="active-swatch"/>Membro ativo</span><span><i className="support-swatch"/>Pé de apoio</span></div><span className="orbit-hint">Arraste para orbitar · pinça para zoom · Tab para câmera</span>
 
@@ -143,6 +146,7 @@ function App() {
         <ol className="phase-list">{m.plan.motion.phases.map(p=><li key={p.at} aria-current={phase===p.label?'step':undefined}>{p.label}</li>)}</ol>
         <p className="eyebrow">OBSERVE</p><p className="attention">{m.plan.instruction.cues.join(' · ')}</p><p className="attention">{m.note}</p>
         <div className="validation"><strong>Sequência conferida</strong><p>{m.source} · movimento {m.id}.<br />{m.plan.instruction.uncertainty} Sem revisão marcial.</p><button className="text-button" onClick={() => setShowSources(true)}>Fontes e limites <Icon name="external"/></button></div>
+        <p className="keyboard-help">Trajetória: linha tracejada do percurso aproximado da mão ou do tornozelo, ativada nos controles de câmera.</p>
         <p className="keyboard-help">Fora do palco: ← → navegam. No palco: setas giram, +/− dão zoom e Home restaura. Espaço pausa.</p>
       </aside>}
 

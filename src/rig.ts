@@ -2,6 +2,9 @@ import {add,rotate,lerp,solveIK,hipPoint,upperPoint,footCenter,type Pose,type V3
 import type {MovementPlan,Side} from './movement-spec.ts';
 // Metres. These match the visible chest/pelvis meshes, including their orientation.
 export const rigShape={chest:{center:[0,.32,0] as V3,half:[.225,.24,.12] as V3},pelvis:{center:[0,.02,0] as V3,half:[.17,.10,.1175] as V3}};
+export const rigRadii={shoulder:.085,elbow:.08,wrist:.06,hip:.085,knee:.10,ankle:.075,upperArm:.073,forearm:.057,thigh:.09,shin:.065};
+export const handSize=(open:number):V3=>[.105,.12+open*.08,.095-open*.055];
+export const footSize:V3=[.14,.10,.29];
 export interface Capsule {name:string;a:V3;b:V3;radius:number;}
 export interface Volume {name:string;half:V3;local:(v:V3)=>V3;}
 const sub=(a:V3,b:V3):V3=>a.map((v,i)=>v-b[i]) as V3;
@@ -57,19 +60,20 @@ const trim=(a:V3,b:V3,length:number):V3=>lerp(a,b,Math.min(1,length/(Math.hypot(
 export function limbCapsules(p:Pose,plan:MovementPlan):Capsule[]{
  const rig=resolveRig(p,plan),capsules:Capsule[]=[];
  for(const side of ['L','R'] as Side[]){
+  const handHalf=handSize(p.open[side]).map(v=>v/2) as V3;
   const {hip,shoulder,leg,arm}=rig[side],f=p.feet[side],axis=rotate([0,-Math.sin(f.pitch),Math.cos(f.pitch)],f.yaw),center=footCenter({...f,position:leg.end});
   capsules.push(
    // Proximal unions: 18 cm at the hip/abdomen seam; 13 cm at the shoulder.
    // Distal thigh, knee, shin and foot remain checked against the torso.
-   {name:side+'thigh',a:trim(hip,leg.joint,.18),b:leg.joint,radius:.09},
-   {name:side+'shin',a:leg.joint,b:leg.end,radius:.065},
-   {name:side+'knee',a:leg.joint,b:leg.joint,radius:.10},
-   {name:side+'foot',a:add(center,axis.map(v=>v*-.145) as V3),b:add(center,axis.map(v=>v*.145) as V3),radius:Math.hypot(.07,.05)},
-   {name:side+'upperArm',a:trim(shoulder,arm.joint,.13),b:arm.joint,radius:.073},
-   {name:side+'forearm',a:arm.joint,b:arm.end,radius:.057},
-   {name:side+'elbow',a:arm.joint,b:arm.joint,radius:.08},
-   {name:side+'ankle',a:leg.end,b:leg.end,radius:.075},
-   {name:side+'hand',a:arm.end,b:arm.end,radius:Math.hypot(.0525,.06+p.open[side]*.04,.0475-p.open[side]*.0275)},
+   {name:side+'thigh',a:trim(hip,leg.joint,.18),b:leg.joint,radius:rigRadii.thigh},
+   {name:side+'shin',a:leg.joint,b:leg.end,radius:rigRadii.shin},
+   {name:side+'knee',a:leg.joint,b:leg.joint,radius:rigRadii.knee},
+   {name:side+'foot',a:add(center,axis.map(v=>v*-footSize[2]/2) as V3),b:add(center,axis.map(v=>v*footSize[2]/2) as V3),radius:Math.hypot(footSize[0]/2,footSize[1]/2)},
+   {name:side+'upperArm',a:trim(shoulder,arm.joint,.13),b:arm.joint,radius:rigRadii.upperArm},
+   {name:side+'forearm',a:arm.joint,b:arm.end,radius:rigRadii.forearm},
+   {name:side+'elbow',a:arm.joint,b:arm.joint,radius:rigRadii.elbow},
+   {name:side+'ankle',a:leg.end,b:leg.end,radius:rigRadii.ankle},
+   {name:side+'hand',a:arm.end,b:arm.end,radius:Math.hypot(...handHalf)},
   );
  }
  return capsules;

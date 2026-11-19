@@ -3,12 +3,12 @@ import { SVGRenderer, SVGObject } from 'three/addons/renderers/SVGRenderer.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { add, rotate, sample, upperPoint, footCenter, plantarCenter, type V3 } from './motion.ts';
 import { duration, type Player } from './player.ts';
-import {resolveRig,rigShape} from './rig.ts';
+import {resolveRig,rigShape,rigRadii,handSize,footSize} from './rig.ts';
 import { lesson, type Side } from './lesson.ts';
 export type CameraView='Livre'|'Frente'|'Lateral'|'Costas'|'Topo';
 export function createStage(host:HTMLDivElement,getPlayer:()=>Player,onError:(message:string)=>void,onCameraInteraction?:()=>void){
  const theme=getComputedStyle(host),color=(token:string)=>theme.getPropertyValue(token).trim();
- const palette={background:color('--stage-bg'),mat:color('--stage-mat'),grid:color('--stage-grid'),line:color('--stage-line'),body:color('--rig-body'),active:color('--active'),support:color('--support'),target:color('--stage-target'),light:color('--stage-light'),groundLight:color('--stage-ground-light')};
+ const palette={background:color('--stage-bg'),mat:color('--stage-mat'),grid:color('--stage-grid'),line:color('--stage-line'),body:color('--rig-body'),active:color('--active'),support:color('--support'),target:color('--stage-target'),light:color('--stage-light'),groundLight:color('--stage-ground-light'),floorTint:color('--stage-floor-tint'),rim:color('--stage-rim'),trim:color('--stage-trim')};
  const scene=new THREE.Scene();scene.background=new THREE.Color(palette.background);
  scene.fog=new THREE.Fog(palette.background,9,20);
  const camera=new THREE.PerspectiveCamera(36,1,.05,60);camera.position.set(2.6,2.3,3.4);
@@ -20,13 +20,38 @@ export function createStage(host:HTMLDivElement,getPlayer:()=>Player,onError:(me
  const controls=new OrbitControls(camera,renderer.domElement);controls.addEventListener('change',invalidate);controls.target.set(0,.91,-.8);controls.minDistance=2.5;controls.maxDistance=12;controls.maxPolarAngle=Math.PI*.49;controls.enableDamping=true;controls.enablePan=true;
  const ambient=compatible?new THREE.AmbientLight(0xffffff,.65):new THREE.HemisphereLight(0xffffff,palette.groundLight,2.2);scene.add(ambient);
  const light=new THREE.DirectionalLight(palette.light,compatible?.45:2.6);light.position.set(-3,7,4);light.castShadow=true;light.shadow.mapSize.set(1024,1024);Object.assign(light.shadow.camera,{left:-5,right:5,top:5,bottom:-5});light.shadow.normalBias=.025;scene.add(light);
+ if(!compatible){const rim=new THREE.DirectionalLight(palette.rim,1.2);rim.position.set(2,3,-4);scene.add(rim);}
  const surface=(color:string,roughness:number)=>compatible?new THREE.MeshLambertMaterial({color}):new THREE.MeshStandardMaterial({color,roughness});
  const materials={body:surface(palette.body,.73),active:surface(palette.active,.65),support:surface(palette.support,.65),mat:compatible?new THREE.MeshBasicMaterial({color:palette.mat}):new THREE.MeshStandardMaterial({color:palette.mat,roughness:1}),mark:new THREE.MeshBasicMaterial({color:palette.line,transparent:true,opacity:.42})};
  const geo={sphere:new THREE.SphereGeometry(1,compatible?20:32,compatible?16:24),segment:new THREE.CylinderGeometry(1,1,1,24),box:new THREE.BoxGeometry(1,1,1)};
- const mesh=(g:THREE.BufferGeometry,mat:THREE.Material)=>{const m=new THREE.Mesh(g,mat);m.castShadow=true;m.receiveShadow=true;scene.add(m);return m;};
+ const mesh=(g:THREE.BufferGeometry,mat:THREE.Material|THREE.Material[])=>{const m=new THREE.Mesh(g,mat);m.castShadow=true;m.receiveShadow=true;scene.add(m);return m;};
  const mat=mesh(geo.box,materials.mat);mat.position.y=-.055;mat.scale.set(4.3,.1,6.6);mat.renderOrder=-100;
+ const assetTextures:THREE.Texture[]=[];
+ if(!compatible){
+  const floor=new THREE.MeshStandardMaterial({color:palette.mat,roughness:.9});
+  mat.material=[materials.mat,materials.mat,floor,materials.mat,materials.mat,materials.mat];
+  const loader=new THREE.TextureLoader();
+  const load=(name:string,apply:(texture:THREE.Texture)=>void)=>{
+   const texture=loader.load(`${import.meta.env.BASE_URL}studio/${name}.webp`,()=>{
+    if(disposed){texture.dispose();return;}
+    apply(texture);floor.needsUpdate=true;invalidate();
+   },undefined,()=>{/* Keep the plain, usable floor if an optional texture fails. */});
+   texture.wrapS=texture.wrapT=THREE.RepeatWrapping;texture.repeat.set(2.15,3.3);
+   texture.anisotropy=Math.min(4,(renderer as THREE.WebGLRenderer).capabilities.getMaxAnisotropy());
+   assetTextures.push(texture);
+  };
+  load('rubber-color',texture=>{texture.colorSpace=THREE.SRGBColorSpace;floor.map=texture;floor.color.set(palette.floorTint);host.dataset.material='rubber';});
+  load('rubber-normal',texture=>{floor.normalMap=texture;floor.normalScale.set(.35,.35);});
+ }
+ // Low perimeter registration marks frame the training area without adding obstacles.
+ const trimMaterial=new THREE.MeshBasicMaterial({color:palette.trim});
+ for(const x of [-1,1])for(const z of [-1,1])for(const horizontal of [true,false]){
+  const corner=mesh(geo.box,trimMaterial);corner.castShadow=false;
+  corner.position.set(x*(horizontal?1.9:2.08),.002,z*(horizontal?3.22:3.04));
+  corner.scale.set(horizontal?.38:.024,.012,horizontal?.024:.38);
+ }
  const edge=new THREE.LineSegments(new THREE.EdgesGeometry(geo.box),new THREE.LineBasicMaterial({color:palette.line,transparent:true,opacity:.35}));edge.position.copy(mat.position);edge.scale.copy(mat.scale);scene.add(edge);
- const grid=new THREE.GridHelper(6,12,palette.grid,palette.grid);(grid.material as THREE.LineBasicMaterial).color.set(palette.grid);(grid.material as THREE.LineBasicMaterial).opacity=.28;(grid.material as THREE.LineBasicMaterial).transparent=true;grid.position.y=.006;grid.renderOrder=-90;scene.add(grid);
+ const grid=new THREE.GridHelper(6,12,palette.grid,palette.grid);(grid.material as THREE.LineBasicMaterial).color.set(palette.grid);(grid.material as THREE.LineBasicMaterial).opacity=.28;(grid.material as THREE.LineBasicMaterial).transparent=true;grid.position.y=.006;grid.renderOrder=-90;grid.visible=compatible;scene.add(grid);
  const path=new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,.012,-3),new THREE.Vector3(0,.012,3)]),new THREE.LineDashedMaterial({color:palette.line,dashSize:.07,gapSize:.09}));path.renderOrder=-80;path.computeLineDistances();scene.add(path);
  const arrow=new THREE.ArrowHelper(new THREE.Vector3(0,0,1),new THREE.Vector3(0,.04,0),.7,palette.target,.16,.12);scene.add(arrow);
  const supportArrow=new THREE.ArrowHelper(new THREE.Vector3(0,0,1),new THREE.Vector3(),.4,palette.support,.12,.10);scene.add(supportArrow);
@@ -36,6 +61,10 @@ export function createStage(host:HTMLDivElement,getPlayer:()=>Player,onError:(me
   if(compatible){const textNode=document.createElementNS('http://www.w3.org/2000/svg','text');textNode.textContent=text;textNode.setAttribute('fill',palette.line);textNode.setAttribute('font-size','10');textNode.setAttribute('text-anchor','middle');const label=new SVGObject(textNode);label.position.set(0,.02,z);scene.add(label);continue;}
   const texture=new THREE.CanvasTexture(canvas);labelTextures.push(texture);const label=new THREE.Mesh(new THREE.PlaneGeometry(.7,.175),new THREE.MeshBasicMaterial({map:texture,transparent:true,depthWrite:false,side:THREE.DoubleSide}));label.rotation.x=-Math.PI/2;label.position.set(0,.022,z);scene.add(label);
  }
+ const trajectory=new THREE.Line(new THREE.BufferGeometry(),new THREE.LineDashedMaterial({color:palette.active,transparent:true,opacity:.75,dashSize:compatible?5:.045,gapSize:compatible?3:.025}));
+ const trajectoryDot=mesh(geo.sphere,new THREE.MeshBasicMaterial({color:palette.active}));trajectoryDot.scale.setScalar(.025);trajectoryDot.castShadow=false;
+ trajectory.visible=trajectoryDot.visible=false;scene.add(trajectory);
+ let trajectoryEnabled=false,trajectoryIndex=-1;
  const parts:Record<string,THREE.Mesh>={};
  for(const name of ['head','neck','chest','hips'])parts[name]=mesh(name==='head'||name==='neck'?geo.sphere:geo.box,materials.body);
  for(const s of ['L','R'])for(const n of ['shoulder','elbow','wrist','hip','knee','ankle','clavicle','upperArm','forearm','thigh','shin','hand','foot','marker'])parts[s+n]=mesh(['shoulder','elbow','wrist','hip','knee','ankle'].includes(n)?geo.sphere:['clavicle','upperArm','forearm','thigh','shin'].includes(n)?geo.segment:geo.box,n==='marker'?materials.mark:materials.body);
@@ -52,16 +81,28 @@ export function createStage(host:HTMLDivElement,getPlayer:()=>Player,onError:(me
   set('chest',at(rigShape.chest.center),rigShape.chest.half.map(v=>v*2) as V3,bodyYaw);
   set('neck',at([0,.61,0]),[.08,.10,.08],bodyYaw);set('head',at([0,.77,0]),[.14,.18,.14],bodyYaw);
   for(const name of ['chest','neck','head'])parts[name].rotation.set(p.lean[0],bodyYaw,p.lean[2],'YXZ');
-  const rig=resolveRig(p,lesson.movements[state.index].plan);
+  const movement=lesson.movements[state.index],rig=resolveRig(p,movement.plan);
+  trajectory.visible=trajectoryDot.visible=trajectoryEnabled;
+  if(trajectoryEnabled){
+   const side=movement.side,kick=movement.plan.motion.kind!=='arm';
+   if(trajectoryIndex!==state.index){
+    const points=Array.from({length:121},(_,n)=>{
+     const pose=sample(state.index,n/120),r=resolveRig(pose,movement.plan)[side];
+     return new THREE.Vector3(...(kick?r.leg.end:r.arm.end));
+    });
+    trajectory.geometry.dispose();trajectory.geometry=new THREE.BufferGeometry().setFromPoints(points);trajectory.computeLineDistances();trajectoryIndex=state.index;host.dataset.trajectoryMovement=String(movement.id);
+   }
+   trajectoryDot.position.set(...(kick?rig[side].leg.end:rig[side].arm.end));
+  }
   for(const side of ['L','R'] as Side[]){
    const movement=lesson.movements[state.index],kick=movement.technique.includes('Kick');
    for(const limb of ['shoulder','upperArm','elbow','forearm','wrist','hand','hip','thigh','knee','shin','ankle','foot'])parts[side+limb].material=side===movement.side&&(kick?['hip','thigh','knee','shin','ankle','foot'].includes(limb):['shoulder','upperArm','elbow','forearm','wrist','hand'].includes(limb))?materials.active:materials.body;
    const sign=side==='L'?-1:1,{shoulder,hip,leg,arm}=rig[side];
    link(side+'clavicle',at([sign*.19,.52,0]),shoulder,.07);
-   for(const [name,pos,r] of [['shoulder',shoulder,.085],['elbow',arm.joint,.08],['wrist',arm.end,.06],['hip',hip,.085],['knee',leg.joint,.10],['ankle',leg.end,.075]] as [string,V3,number][])set(side+name,pos,[r,r,r]);
-   link(side+'upperArm',shoulder,arm.joint,.073);link(side+'forearm',arm.joint,arm.end,.057);link(side+'thigh',hip,leg.joint,.09);link(side+'shin',leg.joint,leg.end,.065);
-   const hand=parts[side+'hand'];hand.position.set(...arm.end);hand.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),new THREE.Vector3(...arm.end).sub(new THREE.Vector3(...arm.joint)).normalize());hand.rotateY(p.open[side]*Math.PI/2);hand.scale.set(.105,.12+p.open[side]*.08,.095-p.open[side]*.055);
-   const f=p.feet[side],footPos=footCenter({...f,position:leg.end});set(side+'foot',footPos,[.14,.10,.29],f.yaw);parts[side+'foot'].rotateX(f.pitch);
+   for(const [name,pos,r] of [['shoulder',shoulder,rigRadii.shoulder],['elbow',arm.joint,rigRadii.elbow],['wrist',arm.end,rigRadii.wrist],['hip',hip,rigRadii.hip],['knee',leg.joint,rigRadii.knee],['ankle',leg.end,rigRadii.ankle]] as [string,V3,number][])set(side+name,pos,[r,r,r]);
+   link(side+'upperArm',shoulder,arm.joint,rigRadii.upperArm);link(side+'forearm',arm.joint,arm.end,rigRadii.forearm);link(side+'thigh',hip,leg.joint,rigRadii.thigh);link(side+'shin',leg.joint,leg.end,rigRadii.shin);
+   const hand=parts[side+'hand'];hand.position.set(...arm.end);hand.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),new THREE.Vector3(...arm.end).sub(new THREE.Vector3(...arm.joint)).normalize());hand.rotateY(p.open[side]*Math.PI/2);hand.scale.set(...handSize(p.open[side]));
+   const f=p.feet[side],footPos=footCenter({...f,position:leg.end});set(side+'foot',footPos,footSize,f.yaw);parts[side+'foot'].rotateX(f.pitch);
    if(kick&&movement.plan.roles.supportFoot===side){parts[side+'foot'].material=materials.support;parts[side+'ankle'].material=materials.support;}
    const plant=plantarCenter(f);set(side+'marker',[plant[0],.016,plant[2]],[.19,.012,.34],f.yaw);parts[side+'marker'].renderOrder=-60;parts[side+'marker'].visible=plant[1]<.02;
 
@@ -124,5 +165,5 @@ export function createStage(host:HTMLDivElement,getPlayer:()=>Player,onError:(me
   camera.position.copy(controls.target).add(new THREE.Vector3().setFromSpherical(orbit));controls.update();draw();
  };
  renderer.domElement.addEventListener('keydown',keyboardCamera);
- return {compatible,preset,setFraming(top:number,bottom:number){topInset=Math.max(0,top);bottomInset=Math.max(0,bottom);projection();draw();},dispose(){disposed=true;cancelAnimationFrame(frame);resize.disconnect();controls.removeEventListener('start',manualCamera);controls.removeEventListener('change',invalidate);controls.dispose();renderer.domElement.removeEventListener('keydown',keyboardCamera);renderer.domElement.removeEventListener('webglcontextlost',lost);scene.traverse(o=>{if(o instanceof THREE.Mesh||o instanceof THREE.Line){o.geometry.dispose();const mats=Array.isArray(o.material)?o.material:[o.material];mats.forEach(m=>m.dispose());}});labelTextures.forEach(t=>t.dispose());if(renderer instanceof THREE.WebGLRenderer)renderer.dispose();renderer.domElement.remove();}};
+ return {compatible,preset,setTrajectory(enabled:boolean){trajectoryEnabled=enabled;host.dataset.trajectory=enabled?'on':'off';invalidate();},setFraming(top:number,bottom:number){topInset=Math.max(0,top);bottomInset=Math.max(0,bottom);projection();draw();},dispose(){disposed=true;cancelAnimationFrame(frame);resize.disconnect();controls.removeEventListener('start',manualCamera);controls.removeEventListener('change',invalidate);controls.dispose();renderer.domElement.removeEventListener('keydown',keyboardCamera);renderer.domElement.removeEventListener('webglcontextlost',lost);scene.traverse(o=>{if(o instanceof THREE.Mesh||o instanceof THREE.Line){o.geometry.dispose();const mats=Array.isArray(o.material)?o.material:[o.material];mats.forEach(m=>m.dispose());}});labelTextures.forEach(t=>t.dispose());assetTextures.forEach(t=>t.dispose());if(renderer instanceof THREE.WebGLRenderer)renderer.dispose();renderer.domElement.remove();}};
 }
